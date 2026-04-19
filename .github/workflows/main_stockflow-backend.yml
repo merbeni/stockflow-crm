@@ -22,7 +22,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd backend
+          cd stockflow-crm/backend
           python -m venv antenv
           source antenv/bin/activate
           pip install -r requirements.txt
@@ -32,8 +32,8 @@ jobs:
         with:
           name: python-app
           path: |
-            backend/
-            !backend/antenv/
+            stockflow-crm/backend/
+            !stockflow-crm/backend/antenv/
 
   deploy:
     runs-on: ubuntu-latest
