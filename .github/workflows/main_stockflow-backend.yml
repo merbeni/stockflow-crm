@@ -20,20 +20,15 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Install dependencies into package folder
         run: |
-          cd stockflow-crm/backend
-          python -m venv antenv
-          source antenv/bin/activate
-          pip install -r requirements.txt
+          pip install --target=stockflow-crm/backend/.python_packages/lib/site-packages -r stockflow-crm/backend/requirements.txt
 
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
           name: python-app
-          path: |
-            stockflow-crm/backend/
-            !stockflow-crm/backend/antenv/
+          path: stockflow-crm/backend/
 
   deploy:
     runs-on: ubuntu-latest
