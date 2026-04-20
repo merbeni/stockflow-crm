@@ -401,15 +401,57 @@ La documentación completa e interactiva (Swagger UI) está en **`http://localho
 
 ## Despliegue en Azure
 
-El proyecto está configurado para desplegarse en Azure:
+El proyecto está desplegado en Azure con CI/CD automático vía GitHub Actions: cada push a `main` actualiza el frontend y el backend sin intervención manual.
 
-| Componente | Servicio Azure |
+### URLs de producción
+
+| Componente | URL |
 |---|---|
-| Frontend | Azure Static Web Apps |
-| Backend | Azure App Service |
-| Base de datos | Azure Database for PostgreSQL Flexible Server |
+| Frontend | https://proud-smoke-07bfb670f.azurestaticapps.net |
+| Backend | https://stockflow-backend-btczc8eahbaaafd6.canadacentral-01.azurewebsites.net |
+| Docs API | https://stockflow-backend-btczc8eahbaaafd6.canadacentral-01.azurewebsites.net/docs |
 
-Para despliegue local o en otro proveedor, cualquier servidor que soporte Python WSGI/ASGI y PostgreSQL funciona (Railway, Render, Fly.io, etc.).
+### Servicios y plan utilizado
+
+| Componente | Servicio Azure | Plan |
+|---|---|---|
+| Frontend | Azure Static Web Apps | Free |
+| Backend | Azure App Service | Basic B1 |
+| Base de datos | Azure Database for PostgreSQL Flexible Server | Burstable B1ms |
+
+Para despliegue local o en otro proveedor, cualquier servidor que soporte Python ASGI y PostgreSQL funciona (Railway, Render, Fly.io, etc.).
+
+### Límites y costos por servicio
+
+> Estos límites aplican a la instancia actualmente desplegada. Si se superan, el servicio correspondiente dejará de funcionar hasta el próximo ciclo o hasta actualizar el plan.
+
+#### Azure Static Web Apps — Free
+- 100 GB de ancho de banda por mes.
+- 0,5 GB de almacenamiento para la aplicación.
+- 2 dominios personalizados por app.
+- Sin SLA garantizado.
+
+#### Azure App Service — Basic B1
+- 1 vCore, 1,75 GB de RAM, 10 GB de almacenamiento en disco.
+- Soporte para dominios personalizados y SSL.
+- Sin autoescalado (instancia fija).
+- Costo aproximado: **~$13 USD/mes** (canadacentral).
+
+#### Azure Database for PostgreSQL Flexible Server
+- Las primeras 750 horas/mes de Burstable B1ms y 32 GB de almacenamiento son **gratuitas durante los primeros 12 meses** para cuentas Azure nuevas.
+- Vencido ese período, el costo aproximado es **~$13 USD/mes** (B1ms, canadacentral).
+- Límites del tier B1ms: 1 vCPU, 2 GB RAM, 32 GB almacenamiento, hasta 396 conexiones.
+
+#### Google AI Studio — Gemini 2.5 Flash (Free)
+- **15 solicitudes por minuto (RPM).**
+- **1.500 solicitudes por día (RPD).** Si se procesan más de 1.500 facturas en un día, las siguientes llamadas serán rechazadas con error 429 hasta el día siguiente.
+- 1.000.000 tokens por minuto (TPM).
+- Sin costo mientras se permanezca dentro de estos límites; se puede pagar por uso si se necesita escalar.
+
+#### SendGrid — Free
+- **100 emails por día.** Este límite es permanente (no se renueva con más tiempo, es el tope del plan gratuito).
+- Si se envían más de 100 emails en un día (entre notificaciones de pedidos, alertas de stock y bienvenidas), los excedentes serán rechazados hasta el día siguiente.
+- 1 remitente verificado en el plan gratuito.
 
 ---
 
