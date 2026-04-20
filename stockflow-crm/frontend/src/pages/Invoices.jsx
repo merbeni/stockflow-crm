@@ -277,7 +277,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel }) {
 
   return (
     <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
           <h2 className="text-base font-semibold text-tx-secondary">Review — Invoice #{processed.invoice_id}</h2>
           <p className="text-xs text-tx-muted mt-0.5">{processed.date ?? 'No date'}</p>
@@ -419,7 +419,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel }) {
 
                   {/* New product fields */}
                   {state.use_new && (
-                    <div className="grid grid-cols-2 gap-2 bg-sidebar rounded-lg p-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-sidebar rounded-lg p-3">
                       {[
                         { key: 'sku', label: 'SKU', required: true },
                         { key: 'name', label: 'Name', required: true },
@@ -553,7 +553,8 @@ export default function Invoices() {
         <p className="text-sm text-tx-muted">Loading…</p>
       ) : (
         <div className="bg-surface rounded-xl shadow overflow-hidden border border-brand-border">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-sm">
             <thead className="bg-sidebar border-b border-brand-border text-xs text-tx-muted uppercase tracking-wide">
               <tr>
                 {['#', 'Date', 'Supplier', 'Status', 'Items', ''].map(h => (
@@ -582,6 +583,7 @@ export default function Invoices() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -594,7 +596,8 @@ export default function Invoices() {
               <span><span className="text-tx-muted">Status:</span> <Badge value={detailModal.status} /></span>
             </div>
             {detailModal.items?.length > 0 && (
-              <table className="w-full text-xs border border-brand-border rounded-lg overflow-hidden">
+              <div className="overflow-x-auto rounded-lg border border-brand-border">
+              <table className="w-full text-xs">
                 <thead className="bg-sidebar text-tx-muted">
                   <tr>
                     {['Description', 'Qty', 'Unit price', 'Confidence', 'Supplier SKU', 'Status'].map(h => (
@@ -620,6 +623,7 @@ export default function Invoices() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </Modal>

@@ -136,7 +136,8 @@ export default function Orders() {
               </div>
 
               {o.items.length > 0 ? (
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto">
+                <table className="w-full min-w-[420px] text-sm">
                   <thead className="text-xs text-tx-muted border-b border-brand-border">
                     <tr>
                       {['Product', 'SKU', 'Qty', 'Unit price', 'Subtotal', ''].map(h => (
@@ -161,6 +162,7 @@ export default function Orders() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               ) : (
                 <p className="text-xs text-tx-muted">No items yet.</p>
               )}

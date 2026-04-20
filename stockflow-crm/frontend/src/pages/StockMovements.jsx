@@ -66,7 +66,8 @@ export default function StockMovements() {
         <p className="text-sm text-tx-muted">Loading…</p>
       ) : (
         <div className="bg-surface rounded-xl shadow overflow-hidden border border-brand-border">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-sm">
             <thead className="bg-sidebar border-b border-brand-border text-xs text-tx-muted uppercase tracking-wide">
               <tr>
                 {['Date', 'Product', 'Type', 'Quantity', 'Origin', ''].map(h => (
@@ -102,6 +103,7 @@ export default function StockMovements() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

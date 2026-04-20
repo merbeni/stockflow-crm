@@ -64,7 +64,8 @@ export default function Suppliers() {
         <p className="text-sm text-tx-muted">Loading…</p>
       ) : (
         <div className="bg-surface rounded-xl shadow overflow-hidden border border-brand-border">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-sm">
             <thead className="bg-sidebar border-b border-brand-border text-xs text-tx-muted uppercase tracking-wide">
               <tr>
                 {['Name', 'Contact', 'Email', 'Phone', ''].map(h => (
@@ -90,6 +91,7 @@ export default function Suppliers() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
