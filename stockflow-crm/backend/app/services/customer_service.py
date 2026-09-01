@@ -15,17 +15,25 @@ from app.schemas.customer import (
 )
 
 
-def get_customer(db: Session, customer_id: int) -> Customer | None:
-    return db.get(Customer, customer_id)
+def get_customer(db: Session, customer_id: int, organization_id: int) -> Customer | None:
+    return (
+        db.query(Customer)
+        .filter(Customer.id == customer_id, Customer.organization_id == organization_id)
+        .first()
+    )
 
 
-def list_customers(db: Session) -> list[Customer]:
-    stmt = select(Customer).order_by(Customer.name)
+def list_customers(db: Session, organization_id: int) -> list[Customer]:
+    stmt = (
+        select(Customer)
+        .where(Customer.organization_id == organization_id)
+        .order_by(Customer.name)
+    )
     return list(db.scalars(stmt))
 
 
-def create_customer(db: Session, payload: CustomerCreate) -> Customer:
-    customer = Customer(**payload.model_dump())
+def create_customer(db: Session, payload: CustomerCreate, organization_id: int) -> Customer:
+    customer = Customer(**payload.model_dump(), organization_id=organization_id)
     db.add(customer)
     db.commit()
     db.refresh(customer)
@@ -45,8 +53,10 @@ def delete_customer(db: Session, customer: Customer) -> None:
     db.commit()
 
 
-def get_order_history(db: Session, customer_id: int) -> CustomerOrderHistory | None:
-    customer = db.get(Customer, customer_id)
+def get_order_history(
+    db: Session, customer_id: int, organization_id: int
+) -> CustomerOrderHistory | None:
+    customer = get_customer(db, customer_id, organization_id)
     if not customer:
         return None
 

@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import client from '../api/client'
+import { getErrorMessage } from '../api/errors'
+import ErrorBanner from '../components/ui/ErrorBanner'
+import FormField from '../components/ui/FormField'
 import { useAuth } from '../context/AuthContext'
 
 export default function Login() {
@@ -8,61 +12,98 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [aviso, setAviso] = useState('')
+  const [necesitaVerificar, setNecesitaVerificar] = useState(false)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setAviso('')
+    setNecesitaVerificar(false)
     setLoading(true)
     try {
       await login(email, password)
       navigate('/')
-    } catch {
-      setError('Invalid email or password.')
+    } catch (err) {
+      setError(getErrorMessage(err, 'No pudimos iniciar sesión.'))
+      // El backend responde 403 cuando la cuenta existe pero falta verificar
+      // el correo: en ese caso ofrecemos reenviar el enlace.
+      if (err.response?.status === 403) setNecesitaVerificar(true)
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-page">
-      <div className="bg-surface p-8 rounded-2xl shadow w-full max-w-sm border border-brand-border">
-        <h1 className="text-2xl font-bold text-tx-primary mb-1">StockFlow CRM</h1>
-        <p className="text-sm text-tx-muted mb-6">Sign in to your account</p>
+  async function reenviarVerificacion() {
+    setError('')
+    try {
+      const { data } = await client.post('/auth/resend-verification', { email })
+      setAviso(data.message)
+      setNecesitaVerificar(false)
+    } catch (err) {
+      setError(getErrorMessage(err, 'No pudimos reenviar el correo.'))
+    }
+  }
 
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-4">{error}</p>
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-page p-4">
+      <div className="w-full max-w-sm rounded-2xl border border-brand-border bg-surface p-8 shadow">
+        <h1 className="mb-1 text-2xl font-bold text-tx-primary">StockFlow CRM</h1>
+        <p className="mb-6 text-sm text-tx-muted">Ingresá a tu cuenta</p>
+
+        <ErrorBanner message={error} className="mb-4" onDismiss={() => setError('')} />
+
+        {aviso && (
+          <p className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+            {aviso}
+          </p>
+        )}
+
+        {necesitaVerificar && (
+          <button
+            type="button"
+            onClick={reenviarVerificacion}
+            className="mb-4 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 hover:bg-amber-100"
+          >
+            Reenviarme el correo de verificación
+          </button>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-tx-secondary mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-tx-secondary mb-1">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
+          <FormField
+            name="email"
+            label="Correo electrónico"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
+          />
+          <FormField
+            name="password"
+            label="Contraseña"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+          />
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-secondary text-secondary-text py-2 rounded-lg text-sm font-medium hover:bg-secondary-dark disabled:opacity-50 transition"
+            className="w-full rounded-lg bg-secondary py-2 text-sm font-medium text-secondary-text transition hover:bg-secondary-dark disabled:opacity-50"
           >
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Ingresando…' : 'Ingresar'}
           </button>
         </form>
+
+        <p className="mt-6 text-center text-sm text-tx-muted">
+          ¿No tenés cuenta?{' '}
+          <Link to="/signup" className="font-medium text-primary-text hover:underline">
+            Creá tu propio CRM
+          </Link>
+        </p>
       </div>
     </div>
   )

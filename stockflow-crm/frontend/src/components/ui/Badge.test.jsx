@@ -2,60 +2,56 @@ import { render, screen } from '@testing-library/react'
 import Badge from './Badge'
 
 describe('Badge', () => {
-  it('renders the value as text when no label override exists', () => {
+  it('traduce los estados de pedido al español', () => {
     render(<Badge value="pending" />)
-    expect(screen.getByText('pending')).toBeInTheDocument()
+    expect(screen.getByText('pendiente')).toBeInTheDocument()
   })
 
-  it('renders "sale" label for the "exit" value', () => {
+  it('traduce "exit" como "venta"', () => {
     render(<Badge value="exit" />)
-    expect(screen.getByText('sale')).toBeInTheDocument()
+    expect(screen.getByText('venta')).toBeInTheDocument()
   })
 
-  it('applies green classes for delivered status', () => {
+  it('aplica clases verdes al estado entregado', () => {
     render(<Badge value="delivered" />)
-    const el = screen.getByText('delivered')
-    expect(el).toHaveClass('bg-green-100', 'text-green-800')
+    expect(screen.getByText('entregado')).toHaveClass('bg-green-100', 'text-green-800')
   })
 
-  it('applies yellow classes for pending status', () => {
+  it('aplica clases amarillas al estado pendiente', () => {
     render(<Badge value="pending" />)
-    const el = screen.getByText('pending')
-    expect(el).toHaveClass('bg-yellow-100', 'text-yellow-800')
+    expect(screen.getByText('pendiente')).toHaveClass('bg-yellow-100', 'text-yellow-800')
   })
 
-  it('applies red classes for rejected status', () => {
+  it('aplica clases rojas al estado rechazado', () => {
     render(<Badge value="rejected" />)
-    const el = screen.getByText('rejected')
-    expect(el).toHaveClass('bg-red-100', 'text-red-800')
+    expect(screen.getByText('rechazada')).toHaveClass('bg-red-100', 'text-red-800')
   })
 
-  it('applies red classes for exit (sale) movement', () => {
+  it('aplica clases rojas al movimiento de venta', () => {
     render(<Badge value="exit" />)
-    const el = screen.getByText('sale')
-    expect(el).toHaveClass('bg-red-100', 'text-red-800')
+    expect(screen.getByText('venta')).toHaveClass('bg-red-100', 'text-red-800')
   })
 
-  it('applies green classes for entry movement', () => {
+  it('aplica clases verdes al movimiento de entrada', () => {
     render(<Badge value="entry" />)
-    const el = screen.getByText('entry')
-    expect(el).toHaveClass('bg-green-100', 'text-green-800')
+    expect(screen.getByText('entrada')).toHaveClass('bg-green-100', 'text-green-800')
   })
 
-  it('applies gray classes for adjustment movement', () => {
+  it('aplica clases grises al movimiento de ajuste', () => {
     render(<Badge value="adjustment" />)
-    const el = screen.getByText('adjustment')
-    expect(el).toHaveClass('bg-gray-100', 'text-gray-700')
+    expect(screen.getByText('ajuste')).toHaveClass('bg-gray-100', 'text-gray-700')
   })
 
-  it('falls back to gray classes for unknown value', () => {
-    render(<Badge value="unknown-status" />)
-    const el = screen.getByText('unknown-status')
-    expect(el).toHaveClass('bg-gray-100', 'text-gray-700')
+  it('usa gris y muestra el valor crudo si no lo conoce', () => {
+    render(<Badge value="estado-desconocido" />)
+    expect(screen.getByText('estado-desconocido')).toHaveClass(
+      'bg-gray-100',
+      'text-gray-700'
+    )
   })
 
-  it('renders as a span element', () => {
+  it('se renderiza como un span', () => {
     render(<Badge value="confirmed" />)
-    expect(screen.getByText('confirmed').tagName).toBe('SPAN')
+    expect(screen.getByText('confirmada').tagName).toBe('SPAN')
   })
 })

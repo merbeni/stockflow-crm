@@ -153,17 +153,65 @@ def send_order_status_email(
 
 
 def send_welcome_email(user_email: str) -> None:
-    subject = "Welcome to StockFlow CRM"
+    subject = "Bienvenido a StockFlow CRM"
     html = f"""
     <html><body style="font-family:sans-serif;color:#1C1917;max-width:560px;margin:auto;padding:24px">
-      <h2 style="color:#064E3B">Welcome to StockFlow CRM</h2>
-      <p>Your account has been created successfully.</p>
+      <h2 style="color:#064E3B">Bienvenido a StockFlow CRM</h2>
+      <p>Tu cuenta se creó correctamente.</p>
       <div style="background:#ECFDF5;border:1px solid #D1FAE5;border-radius:12px;padding:16px 20px;margin:20px 0">
-        <p style="margin:0;font-size:14px;color:#4B7A68">Account email</p>
+        <p style="margin:0;font-size:14px;color:#4B7A68">Correo de la cuenta</p>
         <p style="margin:4px 0 0;font-size:16px;font-weight:600;color:#064E3B">{user_email}</p>
       </div>
-      <p>You can now sign in and start managing your inventory, suppliers, and orders.</p>
-      <p style="color:#6B9E8A;font-size:12px">If you did not register for this account, please contact your administrator.</p>
+      <p>Ya podés iniciar sesión y empezar a gestionar tu inventario, proveedores y pedidos.</p>
+      <p style="color:#6B9E8A;font-size:12px">Si no creaste esta cuenta, comunicate con el administrador.</p>
+    </body></html>
+    """
+    _send(user_email, subject, html)
+
+
+def send_verification_email(
+    user_email: str, token: str, organization_name: str | None = None
+) -> None:
+    """
+    Envía el enlace de verificación de correo.
+
+    Si SendGrid no está configurado (entorno de desarrollo), el enlace se
+    escribe en el log del servidor para no bloquear las pruebas.
+    """
+    enlace = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
+
+    if not settings.SENDGRID_API_KEY:
+        logger.warning(
+            "SendGrid no está configurado. Enlace de verificación para %s: %s",
+            user_email,
+            enlace,
+        )
+        return
+
+    saludo = (
+        f"Ya casi está: solo falta confirmar tu correo para activar "
+        f"<strong>{organization_name}</strong>."
+        if organization_name
+        else "Ya casi está: solo falta confirmar tu correo para activar tu cuenta."
+    )
+    subject = "Confirmá tu correo — StockFlow CRM"
+    html = f"""
+    <html><body style="font-family:sans-serif;color:#1C1917;max-width:560px;margin:auto;padding:24px">
+      <h2 style="color:#064E3B">Confirmá tu correo electrónico</h2>
+      <p>{saludo}</p>
+      <p style="margin:28px 0">
+        <a href="{enlace}"
+           style="background:#064E3B;color:#fff;text-decoration:none;padding:12px 24px;border-radius:10px;font-weight:600">
+          Verificar mi correo
+        </a>
+      </p>
+      <p style="font-size:13px;color:#4B7A68">
+        Si el botón no funciona, copiá y pegá esta dirección en el navegador:<br>
+        <span style="word-break:break-all">{enlace}</span>
+      </p>
+      <p style="color:#6B9E8A;font-size:12px">
+        El enlace vence en 24 horas. Si no creaste esta cuenta, ignorá este mensaje.
+      </p>
     </body></html>
     """
     _send(user_email, subject, html)

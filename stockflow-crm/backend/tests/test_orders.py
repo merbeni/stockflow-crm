@@ -29,11 +29,10 @@ class TestCreateOrder:
         assert data["items"] == []
         assert float(data["total"]) == 0.0
 
-    def test_create_order_nonexistent_customer_returns_400(self, client, auth_headers):
-        # The router catches ValueError from the service and returns 400
+    def test_create_order_nonexistent_customer_returns_404(self, client, auth_headers):
         resp = client.post("/orders", json={"customer_id": 9999}, headers=auth_headers)
-        assert resp.status_code == 400
-        assert "not found" in resp.json()["detail"].lower()
+        assert resp.status_code == 404
+        assert "no encontramos" in resp.json()["detail"].lower()
 
     def test_create_order_requires_auth(self, client, customer):
         resp = client.post("/orders", json={"customer_id": customer["id"]})
@@ -83,7 +82,7 @@ class TestAddItem:
             "unit_price": "5.00",
         }, headers=auth_headers)
         assert resp.status_code == 400
-        assert "insufficient" in resp.json()["detail"].lower()
+        assert "stock suficiente" in resp.json()["detail"].lower()
 
     def test_add_item_inactive_product_returns_400(self, client, auth_headers, pending_order, make_product):
         product = make_product(sku="INACTIVE-P", current_stock="50.000")
@@ -95,15 +94,44 @@ class TestAddItem:
         }, headers=auth_headers)
         assert resp.status_code == 400
 
-    def test_add_item_to_nonexistent_order_returns_400(self, client, auth_headers, product):
-        # The router catches ValueError from the service and returns 400
+    def test_add_item_to_nonexistent_order_returns_404(self, client, auth_headers, product):
         resp = client.post("/orders/9999/items", json={
             "product_id": product["id"],
             "quantity": "1.000",
             "unit_price": "5.00",
         }, headers=auth_headers)
+        assert resp.status_code == 404
+        assert "no encontramos" in resp.json()["detail"].lower()
+
+    def test_cantidad_decimal_rechazada_para_producto_unitario(
+        self, client, auth_headers, pending_order, make_product
+    ):
+        producto = make_product(sku="ENTERO-1", current_stock="50.000")
+        resp = client.post(f"/orders/{pending_order['id']}/items", json={
+            "product_id": producto["id"],
+            "quantity": "2.500",
+            "unit_price": "5.00",
+        }, headers=auth_headers)
         assert resp.status_code == 400
-        assert "not found" in resp.json()["detail"].lower()
+        assert "enteras" in resp.json()["detail"]
+
+    def test_cantidad_decimal_permitida_si_es_a_granel(
+        self, client, auth_headers, pending_order
+    ):
+        granel = client.post("/products", json={
+            "sku": "GRANEL-ORD",
+            "name": "Harina",
+            "price": "800.00",
+            "current_stock": "50.000",
+            "allow_decimal_stock": True,
+        }, headers=auth_headers).json()
+
+        resp = client.post(f"/orders/{pending_order['id']}/items", json={
+            "product_id": granel["id"],
+            "quantity": "2.500",
+            "unit_price": "800.00",
+        }, headers=auth_headers)
+        assert resp.status_code == 200
 
 
 class TestRemoveItem:
@@ -198,7 +226,7 @@ class TestAdvanceStatus:
     def test_advance_empty_order_returns_400(self, client, auth_headers, pending_order):
         resp = client.post(f"/orders/{pending_order['id']}/advance", headers=auth_headers)
         assert resp.status_code == 400
-        assert "no items" in resp.json()["detail"].lower()
+        assert "sin productos" in resp.json()["detail"].lower()
 
     def test_advance_insufficient_stock_at_processing_returns_400(self, client, auth_headers, pending_order, make_product, db):
         from app.models.product import Product
@@ -216,3 +244,26 @@ class TestAdvanceStatus:
 
         resp = client.post(f"/orders/{pending_order['id']}/advance", headers=auth_headers)
         assert resp.status_code == 400
+
+
+class TestAislamientoDePedidos:
+    def test_no_se_listan_pedidos_de_otra_organizacion(
+        self, client, other_org_headers, pending_order
+    ):
+        assert client.get("/orders", headers=other_org_headers).json() == []
+
+    def test_no_se_accede_a_un_pedido_ajeno(self, client, other_org_headers, pending_order):
+        resp = client.get(f"/orders/{pending_order['id']}", headers=other_org_headers)
+        assert resp.status_code == 404
+
+    def test_no_se_avanza_un_pedido_ajeno(self, client, other_org_headers, pending_order):
+        resp = client.post(f"/orders/{pending_order['id']}/advance", headers=other_org_headers)
+        assert resp.status_code == 404
+
+    def test_no_se_usa_un_cliente_de_otra_organizacion(
+        self, client, other_org_headers, customer
+    ):
+        resp = client.post(
+            "/orders", json={"customer_id": customer["id"]}, headers=other_org_headers
+        )
+        assert resp.status_code == 404

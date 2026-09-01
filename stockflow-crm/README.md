@@ -18,8 +18,9 @@ Mini CRM para negocios de ecommerce — gestión de clientes, inventario, provee
 8. [Ejecutar los tests](#ejecutar-los-tests)
 9. [Estructura del proyecto](#estructura-del-proyecto)
 10. [Módulos del sistema](#módulos-del-sistema)
-11. [API — resumen de endpoints](#api--resumen-de-endpoints)
-12. [Despliegue en Azure](#despliegue-en-azure)
+11. [Manejo de errores](#manejo-de-errores)
+12. [API — resumen de endpoints](#api--resumen-de-endpoints)
+13. [Despliegue en Azure](#despliegue-en-azure)
 
 ---
 
@@ -27,9 +28,15 @@ Mini CRM para negocios de ecommerce — gestión de clientes, inventario, provee
 
 StockFlow CRM permite a un negocio:
 
-- **Gestionar su inventario** de productos con alertas de stock mínimo.
+- **Crear su propio CRM**: cada registro público da de alta una organización con
+  sus datos completamente aislados del resto, y su autor queda como administrador.
+- **Gestionar usuarios** de la organización con roles (administrador / operador),
+  verificación de correo electrónico y datos de contacto.
+- **Gestionar su inventario** de productos con alertas de stock mínimo, y con
+  distinción entre artículos por unidad y artículos a granel (que sí admiten
+  cantidades con decimales).
 - **Registrar proveedores** y aprovechar el historial de SKUs para auto-completar futuras facturas.
-- **Procesar facturas** de proveedores con IA: el usuario sube una imagen o PDF → Gemini 2.5 Flash extrae todos los ítems → el usuario revisa y confirma → el stock se actualiza automáticamente.
+- **Procesar facturas** de proveedores con IA: el usuario sube una imagen o PDF → Gemini 2.5 Flash verifica que el documento sea realmente una factura y extrae los ítems → el usuario revisa, corrige y confirma → el stock se actualiza automáticamente.
 - **Gestionar clientes y pedidos** con un flujo de estados (pendiente → procesando → enviado → entregado) y notificaciones por correo.
 - **Consultar movimientos de stock** con filtros por tipo, producto y fecha.
 
@@ -162,6 +169,21 @@ La aplicación queda disponible en **`http://localhost:5173`**.
 
 > Tanto el backend como el frontend deben estar corriendo **al mismo tiempo** en terminales separadas.
 
+### Primer uso: crear tu CRM
+
+No hay usuarios precargados. El primer paso es registrarse:
+
+1. Entrar a `http://localhost:5173/signup`.
+2. Completar el nombre de la organización y los datos de contacto del administrador.
+3. Abrir el enlace de verificación que llega por correo (en desarrollo, sin
+   SendGrid configurado, el enlace aparece en el log del backend).
+4. Iniciar sesión: esa cuenta queda como **administrador de su organización**.
+
+Cada registro crea una organización independiente: sus productos, proveedores,
+clientes, pedidos y facturas no son visibles desde ninguna otra. Desde
+**Usuarios** el administrador da de alta al resto del equipo dentro de su
+organización.
+
 ---
 
 ## Variables de entorno
@@ -199,7 +221,20 @@ GEMINI_MODEL=gemini-2.5-flash
 # SendGrid (opcional — si se omite, los emails se silencian sin error)
 SENDGRID_API_KEY=
 SMTP_FROM_EMAIL=
+
+# Orígenes permitidos por CORS, separados por coma.
+# Nunca usar "*" en producción: es incompatible con el envío de credenciales.
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+
+# URL pública del frontend, usada para armar el enlace de verificación de correo.
+FRONTEND_URL=http://localhost:5173
 ```
+
+> **Verificación de correo en desarrollo:** si `SENDGRID_API_KEY` está vacía, el
+> enlace de verificación **se escribe en el log del servidor** en lugar de
+> enviarse por mail. Buscá una línea que empiece con
+> *"SendGrid no está configurado. Enlace de verificación para…"* y abrila en el
+> navegador.
 
 ### Frontend — `frontend/.env`
 
@@ -237,8 +272,6 @@ python -m pytest tests/test_invoices.py::TestConfirmInvoice::test_confirm_invoic
 
 Los tests usan una base de datos SQLite en memoria — **no se necesita PostgreSQL** para correrlos.
 
-Resultado esperado: **117 tests, 0 fallos**.
-
 ### Frontend
 
 ```bash
@@ -250,8 +283,6 @@ npm run test:run
 # Ejecutar en modo watch (desarrollo)
 npm test
 ```
-
-Resultado esperado: **26 tests, 0 fallos**.
 
 ---
 
@@ -266,11 +297,13 @@ stockflow-crm/
 │   │   ├── core/
 │   │   │   ├── config.py            # Configuración (pydantic-settings)
 │   │   │   ├── security.py          # Hashing + JWT
-│   │   │   └── deps.py              # Dependencias FastAPI (auth)
+│   │   │   ├── errors.py            # Contrato de errores + DomainError
+│   │   │   └── deps.py              # Dependencias FastAPI (auth + organización)
 │   │   ├── db/
 │   │   │   ├── base.py              # Base declarativa SQLAlchemy
 │   │   │   └── session.py           # Motor + sesión de DB
 │   │   ├── models/                  # Modelos SQLAlchemy
+│   │   │   ├── organization.py      # Unidad de aislamiento multi-tenant
 │   │   │   ├── user.py
 │   │   │   ├── product.py
 │   │   │   ├── supplier.py
@@ -280,10 +313,12 @@ stockflow-crm/
 │   │   │   ├── stock_movement.py
 │   │   │   └── product_supplier_mapping.py
 │   │   ├── schemas/                 # Schemas Pydantic (request / response)
+│   │   │   └── validators.py        # Validadores reutilizables en español
 │   │   ├── routers/                 # Endpoints por módulo
 │   │   └── services/                # Lógica de negocio
+│   │       ├── stock_rules.py       # Reglas de integridad del stock
 │   │       └── invoice/
-│   │           ├── gemini_service.py   # Llamada a Gemini
+│   │           ├── gemini_service.py   # Llamada a Gemini + control de contenido
 │   │           └── invoice_service.py  # Lógica de facturas
 │   ├── alembic/                     # Migraciones de base de datos
 │   ├── tests/                       # Suite de tests (pytest)
@@ -295,17 +330,27 @@ stockflow-crm/
 ├── frontend/
 │   ├── src/
 │   │   ├── api/
-│   │   │   └── client.js            # Cliente Axios con interceptors JWT
+│   │   │   ├── client.js            # Cliente Axios con interceptors JWT
+│   │   │   └── errors.js            # Normalización de errores de la API
+│   │   ├── utils/
+│   │   │   └── validation.js        # Validaciones de formulario
 │   │   ├── context/
 │   │   │   └── AuthContext.jsx      # Estado global de autenticación
 │   │   ├── components/
 │   │   │   ├── Layout.jsx           # Sidebar + navegación
 │   │   │   ├── PrivateRoute.jsx     # Protección de rutas
+│   │   │   ├── AdminRoute.jsx       # Rutas restringidas a administradores
+│   │   │   ├── ErrorBoundary.jsx    # Red de seguridad ante fallos de render
 │   │   │   └── ui/
 │   │   │       ├── Badge.jsx        # Badges de estado
+│   │   │       ├── ErrorBanner.jsx  # Aviso de error reutilizable
+│   │   │       ├── FormField.jsx    # Campo con error en línea
 │   │   │       └── Modal.jsx        # Modal reutilizable
 │   │   └── pages/
 │   │       ├── Login.jsx
+│   │       ├── Signup.jsx           # Alta pública de la organización
+│   │       ├── VerifyEmail.jsx      # Confirmación del correo
+│   │       ├── Users.jsx            # Gestión de usuarios (admin)
 │   │       ├── Products.jsx
 │   │       ├── Suppliers.jsx
 │   │       ├── Invoices.jsx         # Flujo IA (upload → review → confirm)
@@ -322,46 +367,106 @@ stockflow-crm/
     └── test-cases/
 ```
 
+> **Documentación a regenerar.** Los archivos de `docs/` son binarios (PNG, DOCX,
+> XLSX) y hay que actualizarlos a mano tras estos cambios:
+> - **DER** (`docs/der/DER.png`): agregar la tabla `organizations` y la clave
+>   foránea `organization_id` en `users`, `products`, `suppliers`, `customers`,
+>   `orders`, `invoices`, `stock_movements` y `product_supplier_mappings`. El SKU
+>   de `products` y el correo de `customers` pasaron de únicos globales a únicos
+>   por organización. `users` suma `full_name`, `phone`, `is_active`,
+>   `is_email_verified` y los campos del token de verificación; `products` suma
+>   `allow_decimal_stock`.
+> - **Manual de usuario**: documentar el registro público, la verificación de
+>   correo y la pantalla de gestión de usuarios.
+> - **Casos de uso y de prueba**: incorporar los escenarios nuevos (documento que
+>   no es una factura, rango de fechas inválido, stock decimal, borrado de
+>   productos y aislamiento entre organizaciones).
+
 ---
 
 ## Módulos del sistema
 
-### 1. Autenticación
-- Registro de usuarios con roles (`admin` / `operator`).
+### 1. Organizaciones y autenticación
+- **Registro público multi-tenant**: cada alta crea una organización con datos
+  aislados y deja a su autor como administrador de esa organización.
+- **Verificación de correo obligatoria**: el login se bloquea hasta confirmar la
+  dirección con un enlace de un solo uso, válido por 24 horas.
 - Login con JWT — token válido por 60 minutos (configurable).
-- Todas las rutas de la API requieren token excepto `/auth/login` y `/auth/register`.
+- Rutas públicas: `/auth/signup`, `/auth/login`, `/auth/verify-email` y
+  `/auth/resend-verification`. Todas las demás requieren token, y solo devuelven
+  datos de la organización del usuario autenticado.
 
-### 2. Inventario (Productos)
-- CRUD completo de productos con SKU único.
-- Campos: SKU, nombre, descripción, precio, stock actual, stock mínimo, estado activo/inactivo.
+### 2. Usuarios (solo administradores)
+- Alta de usuarios dentro de la propia organización, con rol `admin` u `operator`.
+- Cambio de rol, activación y desactivación de cuentas.
+- Datos de contacto (nombre y teléfono) del administrador y del resto del equipo.
+- La organización nunca puede quedarse sin administradores activos.
+
+### 3. Inventario (Productos)
+- CRUD completo de productos con SKU único **dentro de cada organización**.
+- Campos: SKU, nombre, descripción, precio, stock actual, stock mínimo,
+  admite stock decimal, estado activo/inactivo.
+- Los productos por unidad rechazan cantidades fraccionarias; los artículos a
+  granel (kilos, litros, metros) las admiten activando *Admite stock decimal*.
 - Alerta visual de stock bajo (`current_stock < minimum_stock`).
 - Cada cambio de stock genera automáticamente un movimiento de tipo `adjustment`.
+- Un producto puede eliminarse si su stock es 0 y no tiene historial comercial
+  (pedidos o movimientos originados en facturas). La respuesta incluye
+  `can_delete` y el motivo, para poder avisarlo antes de intentarlo.
 
-### 3. Proveedores
-- CRUD de proveedores (nombre, contacto, email, teléfono).
+### 4. Proveedores
+- CRUD de proveedores (razón social, contacto, email, teléfono).
 - El sistema aprende la relación proveedor → SKU propio cada vez que se confirma una factura.
 
-### 4. Facturas (pipeline IA)
-1. El usuario sube un archivo PDF, JPG o PNG (máx. 20 MB).
-2. Gemini 2.5 Flash analiza la imagen directamente y devuelve los ítems detectados con niveles de confianza (`high / medium / low`).
-3. El usuario revisa, asigna cada ítem a un producto existente o crea uno nuevo, y opcionalmente asigna proveedor.
-4. Al confirmar: el stock se actualiza, se crean movimientos de tipo `entry` y se guarda el mapeo SKU del proveedor.
-5. La factura puede rechazarse en lugar de confirmarse.
+### 5. Facturas (pipeline IA)
+1. El usuario sube un archivo PDF, JPG, PNG o WEBP (máx. 20 MB). Se verifica el
+   contenido real del archivo, no solo la extensión declarada.
+2. Gemini 2.5 Flash **primero clasifica el documento**: si no es una factura ni
+   un remito, se rechaza con una explicación y no se guarda nada.
+3. Si es una factura, devuelve los ítems detectados con niveles de confianza
+   (`high / medium / low`).
+4. El usuario revisa y **puede corregir** la descripción, la cantidad y el precio
+   de cada línea, asignarla a un producto existente, crear uno nuevo u omitirla.
+5. Puede volver al listado en cualquier momento: la factura queda pendiente y la
+   revisión se retoma después.
+6. Al confirmar: el stock se actualiza, se crean movimientos de tipo `entry` y se
+   guarda el mapeo SKU del proveedor.
 
-### 5. Movimientos de stock
+### 6. Movimientos de stock
 - Vista de solo lectura con filtros por tipo (`entry / exit / adjustment`), producto y rango de fechas.
-- Cada movimiento indica si fue originado por una factura o un pedido.
+- El rango de fechas se valida: un rango invertido devuelve un error explicativo
+  en lugar de una lista vacía sin explicación.
+- Cada movimiento indica si fue originado por una factura, un pedido o una carga manual.
 
-### 6. Clientes
+### 7. Clientes
 - CRUD de clientes (nombre, email, teléfono, dirección).
 - Vista de historial de pedidos por cliente con totales.
 
-### 7. Pedidos
+### 8. Pedidos
 - Crear pedido para un cliente.
-- Agregar/quitar ítems (valida stock disponible en tiempo real).
+- Agregar/quitar ítems (valida stock disponible y la unidad de medida del producto).
 - Avanzar estado: `pending → processing → shipped → delivered`.
   - En el paso `processing` se deduce el stock automáticamente y se crea un movimiento de tipo `exit`.
   - Se envía email de notificación al cliente en cada cambio de estado (si SendGrid está configurado).
+
+---
+
+## Manejo de errores
+
+Toda la API responde con el mismo formato, de modo que la interfaz nunca reciba
+estructuras inesperadas:
+
+```json
+{
+  "detail": "Correo electrónico: No es una dirección de correo válida.",
+  "errors": { "email": "No es una dirección de correo válida." }
+}
+```
+
+- `detail` es **siempre un string** legible en español, listo para mostrarse.
+- `errors` mapea cada campo con problemas a su mensaje, para señalar el input exacto.
+- Los detalles técnicos (constraints, identificadores internos, respuestas crudas
+  del modelo de IA) se registran del lado del servidor y **nunca** viajan al navegador.
 
 ---
 
@@ -371,9 +476,16 @@ La documentación completa e interactiva (Swagger UI) está en **`http://localho
 
 | Método | Endpoint | Descripción |
 |---|---|---|
-| POST | `/auth/register` | Registrar usuario |
+| POST | `/auth/signup` | Crear organización + administrador (público) |
+| GET | `/auth/verify-email` | Verificar el correo con el token recibido |
+| POST | `/auth/resend-verification` | Reenviar el enlace de verificación |
 | POST | `/auth/login` | Login — devuelve JWT |
 | GET | `/auth/me` | Usuario actual |
+| GET | `/auth/my-organization` | Organización del usuario actual |
+| GET | `/users` | Listar usuarios de la organización (admin) |
+| POST | `/users` | Crear usuario en la organización (admin) |
+| PUT | `/users/{id}` | Cambiar rol o activar/desactivar (admin) |
+| DELETE | `/users/{id}` | Eliminar usuario (admin) |
 | GET | `/products` | Listar productos |
 | POST | `/products` | Crear producto |
 | PUT | `/products/{id}` | Actualizar producto |

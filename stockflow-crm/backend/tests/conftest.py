@@ -91,20 +91,80 @@ def client():
 
 # ── auth helpers ──────────────────────────────────────────────────────────────
 
-def _register_and_login(client, email: str, password: str, role: str) -> str:
-    client.post("/auth/register", json={"email": email, "password": password, "role": role})
+from app.models.user import User  # noqa: E402
+
+
+def _marcar_verificado(email: str) -> None:
+    """
+    Marca el correo como verificado.
+
+    El alta deja al usuario sin verificar y el login lo rechaza hasta que
+    confirme su dirección; en los tests no hay bandeja de entrada, así que se
+    confirma directamente contra la base.
+    """
+    session = _TestingSession()
+    try:
+        user = session.query(User).filter(User.email == email).first()
+        assert user is not None, f"No se creó el usuario {email}"
+        user.is_email_verified = True
+        session.commit()
+    finally:
+        session.close()
+
+
+def _login(client, email: str, password: str) -> str:
     resp = client.post("/auth/login", json={"email": email, "password": password})
+    assert resp.status_code == 200, resp.text
     return resp.json()["access_token"]
+
+
+def signup_organization(
+    client,
+    *,
+    email: str = "admin@test.com",
+    password: str = "password123",
+    organization_name: str = "Organización de prueba",
+    full_name: str = "Ana Gómez",
+    phone: str = "+54 11 5555-1234",
+) -> str:
+    """Da de alta una organización con su administrador y devuelve el token."""
+    resp = client.post(
+        "/auth/signup",
+        json={
+            "organization_name": organization_name,
+            "full_name": full_name,
+            "email": email,
+            "phone": phone,
+            "password": password,
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    _marcar_verificado(email)
+    return _login(client, email, password)
 
 
 @pytest.fixture
 def admin_token(client):
-    return _register_and_login(client, "admin@test.com", "password123", "admin")
+    return signup_organization(client)
 
 
 @pytest.fixture
-def operator_token(client):
-    return _register_and_login(client, "operator@test.com", "password123", "operator")
+def operator_token(client, auth_headers):
+    """Operador dado de alta por el administrador, dentro de su misma organización."""
+    email = "operator@test.com"
+    resp = client.post(
+        "/users",
+        json={
+            "email": email,
+            "password": "password123",
+            "full_name": "Beto Pérez",
+            "role": "operator",
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201, resp.text
+    _marcar_verificado(email)
+    return _login(client, email, "password123")
 
 
 @pytest.fixture
@@ -113,6 +173,23 @@ def auth_headers(admin_token):
 
 
 # ── reusable entity factories ─────────────────────────────────────────────────
+
+@pytest.fixture
+def operator_headers(operator_token):
+    return {"Authorization": "Bearer " + operator_token}
+
+
+@pytest.fixture
+def other_org_headers(client):
+    """Administrador de otra organización, para verificar el aislamiento de datos."""
+    token = signup_organization(
+        client,
+        email="otra@test.com",
+        organization_name="Otra empresa",
+        full_name="Carla Ruiz",
+    )
+    return {"Authorization": "Bearer " + token}
+
 
 @pytest.fixture
 def make_product(client, auth_headers):

@@ -56,6 +56,43 @@ class TestListMovements:
         assert resp.status_code == 200
         assert len(resp.json()) >= 1
 
+    def test_rango_invertido_da_400_con_mensaje_claro(self, client, auth_headers, product_with_stock):
+        """
+        Antes un rango invertido devolvía una lista vacía sin ningún aviso y
+        parecía que simplemente no había movimientos.
+        """
+        resp = client.get(
+            "/stock-movements?date_from=2024-12-31T00:00:00&date_to=2024-01-01T00:00:00",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        detail = resp.json()["detail"]
+        assert isinstance(detail, str)
+        assert "desde" in detail and "hasta" in detail
+        assert resp.json()["errors"]["date_from"]
+
+    def test_fecha_desde_en_el_futuro_da_400(self, client, auth_headers, product_with_stock):
+        resp = client.get(
+            "/stock-movements?date_from=2999-01-01T00:00:00", headers=auth_headers
+        )
+        assert resp.status_code == 400
+        assert "futuro" in resp.json()["detail"]
+
+    def test_hasta_lejano_es_valido(self, client, auth_headers, product_with_stock):
+        # Un "hasta" lejano es solo un límite superior abierto, no un error.
+        resp = client.get(
+            "/stock-movements?date_to=2999-12-31T23:59:59", headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) >= 1
+
+    def test_rango_con_extremos_iguales_es_valido(self, client, auth_headers, product_with_stock):
+        resp = client.get(
+            "/stock-movements?date_from=2024-01-01T00:00:00&date_to=2024-01-01T00:00:00",
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+
     def test_pagination_limit(self, client, auth_headers, make_product):
         for i in range(5):
             make_product(sku=f"PAG-P{i}", current_stock="10.000")
@@ -106,3 +143,19 @@ class TestGetMovement:
         resp = client.get(f"/stock-movements/{movement.id}", headers=auth_headers)
         assert resp.status_code == 200
         assert resp.json()["order_id"] == order_id
+
+
+class TestAislamientoDeMovimientos:
+    def test_no_se_listan_movimientos_de_otra_organizacion(
+        self, client, other_org_headers, product_with_stock
+    ):
+        assert client.get("/stock-movements", headers=other_org_headers).json() == []
+
+    def test_no_se_accede_a_un_movimiento_ajeno(
+        self, client, other_org_headers, product_with_stock, db
+    ):
+        from app.models.stock_movement import StockMovement
+
+        movement = db.query(StockMovement).first()
+        resp = client.get(f"/stock-movements/{movement.id}", headers=other_org_headers)
+        assert resp.status_code == 404

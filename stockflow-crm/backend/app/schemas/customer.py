@@ -1,25 +1,26 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
 from app.models.order import OrderStatus
+from app.schemas.validators import NombrePersona, Telefono, TelefonoOpcional, TextoOpcional
 
 
 # ── Customer CRUD ─────────────────────────────────────────────────────────────
 
 class CustomerCreate(BaseModel):
-    name: str = Field(..., max_length=255)
+    name: NombrePersona()
     email: EmailStr
-    phone: str = Field(..., max_length=50)
-    address: str | None = None
+    phone: Telefono
+    address: TextoOpcional(500) = None
 
 
 class CustomerUpdate(BaseModel):
-    name: str | None = Field(default=None, max_length=255)
+    name: NombrePersona() | None = None
     email: EmailStr | None = None
-    phone: str | None = Field(default=None, max_length=50)
-    address: str | None = None
+    phone: TelefonoOpcional = None
+    address: TextoOpcional(500) = None
 
 
 class CustomerResponse(BaseModel):

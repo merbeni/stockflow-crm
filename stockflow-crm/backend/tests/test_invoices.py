@@ -6,6 +6,8 @@ import pytest
 # ── helpers ───────────────────────────────────────────────────────────────────
 
 _FAKE_GEMINI_RESPONSE = {
+    "is_invoice": True,
+    "document_type": "factura de proveedor",
     "supplier": "Acme Corp",
     "date": "2024-01-15",
     "items": [
@@ -24,18 +26,21 @@ _FAKE_GEMINI_RESPONSE = {
     ],
 }
 
+# Cabecera real de un PDF: el endpoint verifica el contenido del archivo y no
+# solo el content_type declarado por el cliente.
+_PDF_VALIDO = b"%PDF-1.4 contenido de prueba"
+
 
 def _upload_invoice(client, auth_headers, mocker, gemini_data=None):
-    """Upload a fake invoice file with a mocked Gemini response."""
+    """Sube un archivo de factura con la respuesta de Gemini simulada."""
     gemini_data = gemini_data or _FAKE_GEMINI_RESPONSE
     mocker.patch(
         "app.services.invoice.invoice_service.process_invoice_file",
         return_value=gemini_data,
     )
-    fake_file = b"%PDF-1.4 fake pdf content"
     resp = client.post(
         "/invoices/process",
-        files={"file": ("invoice.pdf", fake_file, "application/pdf")},
+        files={"file": ("invoice.pdf", _PDF_VALIDO, "application/pdf")},
         headers=auth_headers,
     )
     return resp
@@ -94,17 +99,100 @@ class TestProcessInvoice:
         assert resp.status_code == 415
 
     def test_process_invoice_gemini_json_error_returns_422(self, client, auth_headers, mocker):
-        # The router maps ValueError (bad Gemini JSON) → 422 Unprocessable Entity
+        # Un ValueError del servicio (JSON ilegible) se traduce en un 422 con un
+        # mensaje para el usuario; el texto crudo del modelo queda solo en el log.
         mocker.patch(
             "app.services.invoice.invoice_service.process_invoice_file",
-            side_effect=ValueError("Gemini returned non-JSON content: ..."),
+            side_effect=ValueError("Gemini devolvió contenido que no es JSON: <html>..."),
         )
         resp = client.post(
             "/invoices/process",
-            files={"file": ("invoice.pdf", b"data", "application/pdf")},
+            files={"file": ("invoice.pdf", _PDF_VALIDO, "application/pdf")},
             headers=auth_headers,
         )
         assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert isinstance(detail, str)
+        # El detalle técnico no debe llegar al navegador.
+        assert "Gemini" not in detail and "html" not in detail
+
+
+class TestValidacionDeDocumento:
+    """
+    El defecto crítico reportado: el sistema aceptaba la foto de un gato como
+    si fuera una factura y guardaba ítems inventados por la IA.
+    """
+
+    def test_documento_que_no_es_factura_se_rechaza(self, client, auth_headers, mocker):
+        resp = _upload_invoice(
+            client,
+            auth_headers,
+            mocker,
+            gemini_data={
+                "is_invoice": False,
+                "document_type": "fotografía de un gato",
+                "supplier": None,
+                "date": None,
+                "items": [],
+            },
+        )
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert "no parece una factura" in detail
+        assert "fotografía de un gato" in detail
+
+    def test_documento_que_no_es_factura_no_guarda_nada(self, client, auth_headers, mocker, db):
+        from app.models.invoice import Invoice
+
+        _upload_invoice(
+            client,
+            auth_headers,
+            mocker,
+            gemini_data={
+                "is_invoice": False,
+                "document_type": "captura de pantalla",
+                "items": [],
+            },
+        )
+        # Antes se creaba la factura antes de cualquier control.
+        assert db.query(Invoice).count() == 0
+        assert client.get("/invoices", headers=auth_headers).json() == []
+
+    def test_factura_sin_lineas_se_rechaza(self, client, auth_headers, mocker, db):
+        from app.models.invoice import Invoice
+
+        resp = _upload_invoice(
+            client,
+            auth_headers,
+            mocker,
+            gemini_data={"is_invoice": True, "supplier": "Acme", "items": []},
+        )
+        assert resp.status_code == 422
+        assert "línea" in resp.json()["detail"]
+        assert db.query(Invoice).count() == 0
+
+    def test_archivo_con_extension_falsificada_se_rechaza(self, client, auth_headers):
+        # El content_type lo declara el cliente: se comprueba el contenido real.
+        resp = client.post(
+            "/invoices/process",
+            files={"file": ("virus.pdf", b"MZ\x90\x00 ejecutable", "application/pdf")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 415
+        assert "contenido" in resp.json()["detail"]
+
+    def test_imagen_valida_se_acepta(self, client, auth_headers, mocker):
+        mocker.patch(
+            "app.services.invoice.invoice_service.process_invoice_file",
+            return_value=_FAKE_GEMINI_RESPONSE,
+        )
+        png = b"\x89PNG\r\n\x1a\n" + b"0" * 32
+        resp = client.post(
+            "/invoices/process",
+            files={"file": ("factura.png", png, "image/png")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201
 
 
 # ── confirm ───────────────────────────────────────────────────────────────────
@@ -215,6 +303,140 @@ class TestConfirmInvoice:
         assert resp.status_code == 400
 
 
+class TestMensajesDeConfirmacion:
+    """
+    El evaluador vio "item 48: provide product_id", que además de ser
+    incomprensible dejaba a la vista la estructura interna de la base.
+    """
+
+    def test_linea_sin_producto_da_un_mensaje_de_negocio(self, client, auth_headers, mocker):
+        process_resp = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = process_resp.json()["invoice_id"]
+        items = process_resp.json()["items"]
+
+        resp = client.post(
+            f"/invoices/{invoice_id}/confirm",
+            json={"items": [{"invoice_item_id": items[0]["id"]}]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        detail = resp.json()["detail"]
+        assert isinstance(detail, str)
+        # Identifica la línea por su descripción, no por el ID interno.
+        assert "Blue Widget" in detail
+        assert "product_id" not in detail
+        assert "new_product" not in detail
+        assert str(items[0]["id"]) not in detail
+
+    def test_producto_inexistente_no_expone_el_id(self, client, auth_headers, mocker):
+        process_resp = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = process_resp.json()["invoice_id"]
+        items = process_resp.json()["items"]
+
+        resp = client.post(
+            f"/invoices/{invoice_id}/confirm",
+            json={"items": [{"invoice_item_id": items[0]["id"], "product_id": 99999}]},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "99999" not in resp.json()["detail"]
+
+    def test_proveedor_inexistente_da_404_sin_id(self, client, auth_headers, mocker, make_product):
+        product = make_product(sku="SUP-404", name="Blue Widget", current_stock="0.000")
+        process_resp = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = process_resp.json()["invoice_id"]
+        items = process_resp.json()["items"]
+
+        resp = client.post(
+            f"/invoices/{invoice_id}/confirm",
+            json={
+                "supplier_id": 99999,
+                "items": [
+                    {"invoice_item_id": items[0]["id"], "product_id": product["id"]},
+                    {"invoice_item_id": items[1]["id"], "skip": True},
+                ],
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 404
+        assert "99999" not in resp.json()["detail"]
+
+    def test_la_factura_sigue_pendiente_tras_un_error(self, client, auth_headers, mocker):
+        process_resp = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = process_resp.json()["invoice_id"]
+        items = process_resp.json()["items"]
+
+        client.post(
+            f"/invoices/{invoice_id}/confirm",
+            json={"items": [{"invoice_item_id": items[0]["id"]}]},
+            headers=auth_headers,
+        )
+        # Se puede volver a la revisión y corregir: la factura no queda bloqueada.
+        detalle = client.get(f"/invoices/{invoice_id}", headers=auth_headers)
+        assert detalle.json()["status"] == "pending"
+
+
+class TestCorreccionesManuales:
+    def test_se_puede_corregir_la_cantidad_extraida(
+        self, client, auth_headers, mocker, make_product, db
+    ):
+        from app.models.product import Product
+
+        product = make_product(sku="COR-001", name="Blue Widget", current_stock="0.000")
+        process_resp = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = process_resp.json()["invoice_id"]
+        items = process_resp.json()["items"]
+
+        # La IA leyó 10; el usuario corrige a 7 antes de confirmar.
+        resp = client.post(
+            f"/invoices/{invoice_id}/confirm",
+            json={
+                "items": [
+                    {
+                        "invoice_item_id": items[0]["id"],
+                        "product_id": product["id"],
+                        "quantity": "7.000",
+                        "unit_price": "6.50",
+                        "description": "Widget azul (corregido)",
+                    },
+                    {"invoice_item_id": items[1]["id"], "skip": True},
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 200
+        assert float(db.get(Product, product["id"]).current_stock) == 7.0
+
+        linea = next(i for i in resp.json()["items"] if not i["skipped"])
+        assert linea["description"] == "Widget azul (corregido)"
+        assert float(linea["unit_price"]) == 6.5
+
+    def test_cantidad_decimal_rechazada_para_producto_unitario(
+        self, client, auth_headers, mocker, make_product
+    ):
+        product = make_product(sku="COR-002", name="Blue Widget", current_stock="0.000")
+        process_resp = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = process_resp.json()["invoice_id"]
+        items = process_resp.json()["items"]
+
+        resp = client.post(
+            f"/invoices/{invoice_id}/confirm",
+            json={
+                "items": [
+                    {
+                        "invoice_item_id": items[0]["id"],
+                        "product_id": product["id"],
+                        "quantity": "7.500",
+                    },
+                    {"invoice_item_id": items[1]["id"], "skip": True},
+                ]
+            },
+            headers=auth_headers,
+        )
+        assert resp.status_code == 400
+        assert "enteras" in resp.json()["detail"]
+
+
 # ── reject ────────────────────────────────────────────────────────────────────
 
 class TestRejectInvoice:
@@ -233,11 +455,10 @@ class TestRejectInvoice:
         resp = client.post(f"/invoices/{invoice_id}/reject", headers=auth_headers)
         assert resp.status_code == 400
 
-    def test_reject_nonexistent_invoice_returns_400(self, client, auth_headers):
-        # The router catches ValueError from the service and returns 400
+    def test_reject_nonexistent_invoice_returns_404(self, client, auth_headers):
         resp = client.post("/invoices/9999/reject", headers=auth_headers)
-        assert resp.status_code == 400
-        assert "not found" in resp.json()["detail"].lower()
+        assert resp.status_code == 404
+        assert "no encontramos" in resp.json()["detail"].lower()
 
 
 # ── list / get ────────────────────────────────────────────────────────────────
@@ -264,3 +485,47 @@ class TestListGetInvoice:
     def test_get_nonexistent_invoice_returns_404(self, client, auth_headers):
         resp = client.get("/invoices/9999", headers=auth_headers)
         assert resp.status_code == 404
+
+
+class TestAislamientoDeFacturas:
+    def test_no_se_listan_facturas_de_otra_organizacion(
+        self, client, auth_headers, other_org_headers, mocker
+    ):
+        _upload_invoice(client, auth_headers, mocker)
+        assert client.get("/invoices", headers=other_org_headers).json() == []
+
+    def test_no_se_accede_a_una_factura_ajena(
+        self, client, auth_headers, other_org_headers, mocker
+    ):
+        invoice_id = _upload_invoice(client, auth_headers, mocker).json()["invoice_id"]
+        assert (
+            client.get(f"/invoices/{invoice_id}", headers=other_org_headers).status_code == 404
+        )
+
+    def test_no_se_confirma_una_factura_ajena(
+        self, client, auth_headers, other_org_headers, mocker
+    ):
+        resp_proceso = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = resp_proceso.json()["invoice_id"]
+        items = resp_proceso.json()["items"]
+        resp = client.post(
+            f"/invoices/{invoice_id}/confirm",
+            json={"items": [{"invoice_item_id": items[0]["id"], "skip": True}]},
+            headers=other_org_headers,
+        )
+        assert resp.status_code == 404
+
+    def test_no_se_sugieren_productos_de_otra_organizacion(
+        self, client, auth_headers, other_org_headers, mocker
+    ):
+        # El producto existe en la organización A…
+        client.post(
+            "/products",
+            json={"sku": "AJENO-1", "name": "Blue Widget", "price": "5.00"},
+            headers=auth_headers,
+        )
+        # …pero la factura se procesa en la B y no debe sugerirlo.
+        resp = _upload_invoice(client, other_org_headers, mocker)
+        assert resp.status_code == 201
+        for item in resp.json()["items"]:
+            assert item["suggested_product_id"] is None

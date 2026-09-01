@@ -1,31 +1,41 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import client from '../api/client'
 import { useAuth } from '../context/AuthContext'
 
 const NAV = [
-  { to: '/products',        label: 'Products' },
-  { to: '/suppliers',       label: 'Suppliers' },
-  { to: '/invoices',        label: 'Invoices' },
-  { to: '/stock-movements', label: 'Stock Movements' },
-  { to: '/customers',       label: 'Customers' },
-  { to: '/orders',          label: 'Orders' },
+  { to: '/products',        label: 'Productos' },
+  { to: '/suppliers',       label: 'Proveedores' },
+  { to: '/invoices',        label: 'Facturas' },
+  { to: '/stock-movements', label: 'Movimientos de stock' },
+  { to: '/customers',       label: 'Clientes' },
+  { to: '/orders',          label: 'Pedidos' },
 ]
 
-function SidebarContent({ user, onLogout, onClose }) {
+const NAV_ADMIN = [{ to: '/users', label: 'Usuarios' }]
+
+function SidebarContent({ user, organizacion, isAdmin, onLogout, onClose }) {
+  const enlaces = isAdmin ? [...NAV, ...NAV_ADMIN] : NAV
+
   return (
     <>
-      <div className="px-5 py-5 border-b border-brand-border flex items-center justify-between">
-        <span className="text-lg font-bold text-primary-text">StockFlow</span>
+      <div className="flex items-center justify-between border-b border-brand-border px-5 py-5">
+        <div className="min-w-0">
+          <span className="block text-lg font-bold text-primary-text">StockFlow</span>
+          {organizacion && (
+            <span className="block truncate text-xs text-tx-muted">{organizacion.name}</span>
+          )}
+        </div>
         <button
           onClick={onClose}
-          className="md:hidden text-tx-muted hover:text-tx-secondary text-2xl leading-none p-1"
-          aria-label="Close menu"
+          className="p-1 text-2xl leading-none text-tx-muted hover:text-tx-secondary md:hidden"
+          aria-label="Cerrar menú"
         >
           &times;
         </button>
       </div>
-      <nav className="flex-1 py-4 space-y-0.5 px-2">
-        {NAV.map(({ to, label }) => (
+      <nav className="flex-1 space-y-0.5 px-2 py-4">
+        {enlaces.map(({ to, label }) => (
           <NavLink
             key={to}
             to={to}
@@ -42,13 +52,21 @@ function SidebarContent({ user, onLogout, onClose }) {
           </NavLink>
         ))}
       </nav>
-      <div className="px-4 py-4 border-t border-brand-border">
-        <p className="text-xs text-tx-muted truncate mb-2">{user?.email ?? ''}</p>
+      <div className="border-t border-brand-border px-4 py-4">
+        <p className="truncate text-xs font-medium text-tx-secondary">
+          {user?.full_name ?? user?.email ?? ''}
+        </p>
+        {user?.full_name && (
+          <p className="mb-1 truncate text-xs text-tx-muted">{user.email}</p>
+        )}
+        <p className="mb-2 text-xs text-tx-muted">
+          {isAdmin ? 'Administrador' : 'Operador'}
+        </p>
         <button
           onClick={onLogout}
-          className="w-full text-left text-xs text-red-500 hover:text-red-700 font-medium"
+          className="w-full text-left text-xs font-medium text-red-500 hover:text-red-700"
         >
-          Sign out
+          Cerrar sesión
         </button>
       </div>
     </>
@@ -56,43 +74,62 @@ function SidebarContent({ user, onLogout, onClose }) {
 }
 
 export default function Layout() {
-  const { user, logout } = useAuth()
+  const { user, isAdmin, logout } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  const [organizacion, setOrganizacion] = useState(null)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelado = false
+    client
+      .get('/auth/my-organization')
+      .then(({ data }) => {
+        if (!cancelado) setOrganizacion(data)
+      })
+      .catch(() => {
+        // El nombre de la organización es informativo: si falla, no se muestra.
+      })
+    return () => {
+      cancelado = true
+    }
+  }, [user])
 
   function handleLogout() {
     logout()
     navigate('/login')
   }
 
+  const sidebarProps = { user, organizacion, isAdmin, onLogout: handleLogout }
+
   return (
     <div className="flex h-screen bg-page">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-56 bg-sidebar border-r border-brand-border flex-col shrink-0">
-        <SidebarContent user={user} onLogout={handleLogout} onClose={() => {}} />
+      {/* Barra lateral de escritorio */}
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-brand-border bg-sidebar md:flex">
+        <SidebarContent {...sidebarProps} onClose={() => {}} />
       </aside>
 
-      {/* Mobile drawer overlay */}
+      {/* Cajón lateral en móvil */}
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-sidebar border-r border-brand-border flex flex-col z-50">
-            <SidebarContent user={user} onLogout={handleLogout} onClose={() => setOpen(false)} />
+          <aside className="absolute left-0 top-0 z-50 flex h-full w-64 flex-col border-r border-brand-border bg-sidebar">
+            <SidebarContent {...sidebarProps} onClose={() => setOpen(false)} />
           </aside>
         </div>
       )}
 
-      {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {/* Mobile top bar */}
-        <header className="md:hidden flex items-center justify-between px-4 py-3 bg-sidebar border-b border-brand-border shrink-0">
+      {/* Área principal */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Barra superior en móvil */}
+        <header className="flex shrink-0 items-center justify-between border-b border-brand-border bg-sidebar px-4 py-3 md:hidden">
           <span className="text-base font-bold text-primary-text">StockFlow</span>
           <button
             onClick={() => setOpen(true)}
-            className="text-tx-secondary p-1 rounded-md hover:bg-brand-border"
-            aria-label="Open menu"
+            className="rounded-md p-1 text-tx-secondary hover:bg-brand-border"
+            aria-label="Abrir menú"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>

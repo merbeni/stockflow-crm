@@ -11,6 +11,7 @@ from app.models.supplier import Supplier
 
 def list_movements(
     db: Session,
+    organization_id: int,
     *,
     product_id: int | None = None,
     movement_type: MovementType | None = None,
@@ -21,6 +22,7 @@ def list_movements(
 ) -> list[StockMovement]:
     stmt = (
         select(StockMovement)
+        .where(StockMovement.organization_id == organization_id)
         .options(
             joinedload(StockMovement.product),
             joinedload(StockMovement.invoice).joinedload(Invoice.supplier),
@@ -42,10 +44,13 @@ def list_movements(
     return list(db.scalars(stmt).unique())
 
 
-def get_movement(db: Session, movement_id: int) -> StockMovement | None:
+def get_movement(db: Session, movement_id: int, organization_id: int) -> StockMovement | None:
     stmt = (
         select(StockMovement)
-        .where(StockMovement.id == movement_id)
+        .where(
+            StockMovement.id == movement_id,
+            StockMovement.organization_id == organization_id,
+        )
         .options(
             joinedload(StockMovement.product),
             joinedload(StockMovement.invoice).joinedload(Invoice.supplier),

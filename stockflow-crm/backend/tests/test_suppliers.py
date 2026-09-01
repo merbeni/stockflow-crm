@@ -90,3 +90,50 @@ class TestDeleteSupplier:
     def test_delete_nonexistent_supplier_returns_404(self, client, auth_headers):
         resp = client.delete("/suppliers/9999", headers=auth_headers)
         assert resp.status_code == 404
+
+
+class TestValidacionesDeProveedor:
+    def test_razon_social_admite_numeros(self, client, auth_headers):
+        # Es el nombre de una empresa: "3M Argentina" es válido.
+        resp = client.post("/suppliers", json={
+            "name": "3M Argentina",
+            "contact_name": "Laura Díaz",
+            "email": "laura@3m.com",
+        }, headers=auth_headers)
+        assert resp.status_code == 201
+
+    def test_nombre_de_contacto_con_numeros_da_422(self, client, auth_headers):
+        resp = client.post("/suppliers", json={
+            "name": "Proveedor",
+            "contact_name": "Juan 22",
+            "email": "juan@test.com",
+        }, headers=auth_headers)
+        assert resp.status_code == 422
+        assert "números" in resp.json()["errors"]["contact_name"]
+
+    def test_correo_invalido_da_422_con_detail_string(self, client, auth_headers):
+        resp = client.post("/suppliers", json={
+            "name": "Proveedor",
+            "contact_name": "Juan Pérez",
+            "email": "no-es-mail",
+        }, headers=auth_headers)
+        assert resp.status_code == 422
+        assert isinstance(resp.json()["detail"], str)
+        assert "email" in resp.json()["errors"]
+
+
+class TestAislamientoDeProveedores:
+    def test_no_se_listan_proveedores_de_otra_organizacion(
+        self, client, other_org_headers, make_supplier
+    ):
+        make_supplier()
+        assert client.get("/suppliers", headers=other_org_headers).json() == []
+
+    def test_no_se_accede_a_un_proveedor_ajeno(
+        self, client, other_org_headers, make_supplier
+    ):
+        supplier = make_supplier()
+        assert (
+            client.get(f"/suppliers/{supplier['id']}", headers=other_org_headers).status_code
+            == 404
+        )

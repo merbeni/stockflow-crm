@@ -16,7 +16,20 @@ const COLORS = {
   low:        'bg-conf-low-bg text-conf-low-text',
 }
 
-const LABELS = { exit: 'sale' }
+const LABELS = {
+  pending: 'pendiente',
+  processing: 'en preparación',
+  shipped: 'enviado',
+  delivered: 'entregado',
+  confirmed: 'confirmada',
+  rejected: 'rechazada',
+  entry: 'entrada',
+  exit: 'venta',
+  adjustment: 'ajuste',
+  high: 'alta',
+  medium: 'media',
+  low: 'baja',
+}
 
 export default function Badge({ value }) {
   const cls = COLORS[value] ?? 'bg-gray-100 text-gray-700'

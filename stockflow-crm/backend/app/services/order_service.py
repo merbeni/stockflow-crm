@@ -3,11 +3,13 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.errors import DomainError, NotFoundError
 from app.models.customer import Customer
 from app.models.order import Order, OrderItem, OrderStatus
 from app.models.product import Product
 from app.models.stock_movement import MovementType, StockMovement
 from app.schemas.order import OrderCreate, OrderItemAdd, OrderItemResponse, OrderResponse
+from app.services.stock_rules import validar_cantidad
 
 # Valid status transitions
 _TRANSITIONS: dict[OrderStatus, OrderStatus] = {
@@ -16,19 +18,33 @@ _TRANSITIONS: dict[OrderStatus, OrderStatus] = {
     OrderStatus.shipped: OrderStatus.delivered,
 }
 
+_ESTADOS_ES = {
+    OrderStatus.pending: "pendiente",
+    OrderStatus.processing: "en preparación",
+    OrderStatus.shipped: "enviado",
+    OrderStatus.delivered: "entregado",
+}
+
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
-def _load_order(db: Session, order_id: int) -> Order | None:
+def _load_order(db: Session, order_id: int, organization_id: int) -> Order | None:
     stmt = (
         select(Order)
-        .where(Order.id == order_id)
+        .where(Order.id == order_id, Order.organization_id == organization_id)
         .options(
             joinedload(Order.customer),
             joinedload(Order.items).joinedload(OrderItem.product),
         )
     )
     return db.scalars(stmt).first()
+
+
+def _require_order(db: Session, order_id: int, organization_id: int) -> Order:
+    order = _load_order(db, order_id, organization_id)
+    if not order:
+        raise NotFoundError("No encontramos ese pedido.")
+    return order
 
 
 def _build_response(order: Order) -> OrderResponse:
@@ -60,9 +76,10 @@ def _build_response(order: Order) -> OrderResponse:
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
-def list_orders(db: Session) -> list[OrderResponse]:
+def list_orders(db: Session, organization_id: int) -> list[OrderResponse]:
     stmt = (
         select(Order)
+        .where(Order.organization_id == organization_id)
         .options(
             joinedload(Order.customer),
             joinedload(Order.items).joinedload(OrderItem.product),
@@ -73,51 +90,86 @@ def list_orders(db: Session) -> list[OrderResponse]:
     return [_build_response(o) for o in orders]
 
 
-def get_order(db: Session, order_id: int) -> OrderResponse | None:
-    order = _load_order(db, order_id)
+def get_order(db: Session, order_id: int, organization_id: int) -> OrderResponse | None:
+    order = _load_order(db, order_id, organization_id)
     return _build_response(order) if order else None
 
 
-def create_order(db: Session, payload: OrderCreate) -> OrderResponse:
-    customer = db.get(Customer, payload.customer_id)
+def create_order(db: Session, payload: OrderCreate, organization_id: int) -> OrderResponse:
+    customer = (
+        db.query(Customer)
+        .filter(
+            Customer.id == payload.customer_id,
+            Customer.organization_id == organization_id,
+        )
+        .first()
+    )
     if not customer:
-        raise ValueError(f"Customer {payload.customer_id} not found")
+        raise NotFoundError("No encontramos ese cliente.")
 
-    order = Order(customer_id=payload.customer_id, status=OrderStatus.pending)
+    order = Order(
+        customer_id=payload.customer_id,
+        organization_id=organization_id,
+        status=OrderStatus.pending,
+    )
     db.add(order)
     db.commit()
     db.refresh(order)
-    return _build_response(_load_order(db, order.id))
+    return _build_response(_load_order(db, order.id, organization_id))
 
 
-def delete_order(db: Session, order_id: int) -> None:
-    order = db.get(Order, order_id)
-    if not order:
-        raise ValueError("Order not found")
+def delete_order(db: Session, order_id: int, organization_id: int) -> None:
+    order = _require_order(db, order_id, organization_id)
     if order.status != OrderStatus.pending:
-        raise ValueError("Only pending orders can be deleted")
+        raise DomainError(
+            f"El pedido ya está {_ESTADOS_ES[order.status]}, así que no se puede "
+            "eliminar. Solo se pueden borrar los pedidos pendientes."
+        )
     db.delete(order)
     db.commit()
 
 
 # ── Items ─────────────────────────────────────────────────────────────────────
 
-def add_item(db: Session, order_id: int, payload: OrderItemAdd) -> OrderResponse:
-    order = _load_order(db, order_id)
-    if not order:
-        raise ValueError("Order not found")
+def add_item(
+    db: Session, order_id: int, payload: OrderItemAdd, organization_id: int
+) -> OrderResponse:
+    order = _require_order(db, order_id, organization_id)
     if order.status != OrderStatus.pending:
-        raise ValueError("Items can only be added to pending orders")
+        raise DomainError(
+            "Solo se pueden agregar productos a un pedido que siga pendiente."
+        )
 
-    product = db.get(Product, payload.product_id)
+    product = (
+        db.query(Product)
+        .filter(
+            Product.id == payload.product_id,
+            Product.organization_id == organization_id,
+        )
+        .first()
+    )
     if not product:
-        raise ValueError(f"Product {payload.product_id} not found")
+        raise NotFoundError("No encontramos ese producto.")
     if not product.is_active:
-        raise ValueError(f"'{product.name}' is deactivated and cannot be added to orders")
+        raise DomainError(
+            f"El producto «{product.name}» está desactivado y no se puede agregar "
+            "a un pedido.",
+            field="product_id",
+        )
+
+    validar_cantidad(
+        payload.quantity,
+        permite_decimales=product.allow_decimal_stock,
+        nombre_producto=product.name,
+        campo="quantity",
+    )
+
     if float(payload.quantity) > float(product.current_stock):
-        raise ValueError(
-            f"Insufficient stock for '{product.name}': "
-            f"available {float(product.current_stock)}, requested {float(payload.quantity)}"
+        raise DomainError(
+            f"No hay stock suficiente de «{product.name}»: quedan "
+            f"{Decimal(str(product.current_stock)).normalize()} y se piden "
+            f"{Decimal(str(payload.quantity)).normalize()}.",
+            field="quantity",
         )
 
     db.add(OrderItem(
@@ -127,50 +179,57 @@ def add_item(db: Session, order_id: int, payload: OrderItemAdd) -> OrderResponse
         unit_price=float(payload.unit_price),
     ))
     db.commit()
-    return _build_response(_load_order(db, order_id))
+    return _build_response(_load_order(db, order_id, organization_id))
 
 
-def remove_item(db: Session, order_id: int, item_id: int) -> OrderResponse:
-    order = _load_order(db, order_id)
-    if not order:
-        raise ValueError("Order not found")
+def remove_item(
+    db: Session, order_id: int, item_id: int, organization_id: int
+) -> OrderResponse:
+    order = _require_order(db, order_id, organization_id)
     if order.status != OrderStatus.pending:
-        raise ValueError("Items can only be removed from pending orders")
+        raise DomainError(
+            "Solo se pueden quitar productos de un pedido que siga pendiente."
+        )
 
     item = db.get(OrderItem, item_id)
     if not item or item.order_id != order_id:
-        raise ValueError("Order item not found")
+        raise NotFoundError("No encontramos esa línea del pedido.")
 
     db.delete(item)
     db.commit()
-    return _build_response(_load_order(db, order_id))
+    return _build_response(_load_order(db, order_id, organization_id))
 
 
 # ── Status transition ─────────────────────────────────────────────────────────
 
-def advance_status(db: Session, order_id: int) -> OrderResponse:
-    order = _load_order(db, order_id)
-    if not order:
-        raise ValueError("Order not found")
+def advance_status(db: Session, order_id: int, organization_id: int) -> OrderResponse:
+    order = _require_order(db, order_id, organization_id)
 
     next_status = _TRANSITIONS.get(order.status)
     if not next_status:
-        raise ValueError(f"Order is already {order.status.value} — no further transitions")
+        raise DomainError(
+            f"El pedido ya está {_ESTADOS_ES[order.status]}: no quedan más "
+            "estados por avanzar."
+        )
 
-    # pending → processing: deduct stock and create exit movements
+    # pendiente → en preparación: descuenta stock y registra las salidas.
     if order.status == OrderStatus.pending:
         if not order.items:
-            raise ValueError("Cannot confirm an order with no items")
+            raise DomainError(
+                "No se puede confirmar un pedido sin productos. Agregá al menos uno."
+            )
         for oi in order.items:
             product = db.get(Product, oi.product_id)
             qty = float(oi.quantity)
-            if product.current_stock < qty:
-                raise ValueError(
-                    f"Insufficient stock for '{product.name}': "
-                    f"available {product.current_stock}, requested {qty}"
+            if float(product.current_stock) < qty:
+                raise DomainError(
+                    f"No hay stock suficiente de «{product.name}»: quedan "
+                    f"{Decimal(str(product.current_stock)).normalize()} y el pedido "
+                    f"requiere {Decimal(str(oi.quantity)).normalize()}."
                 )
             product.current_stock = float(product.current_stock) - qty
             db.add(StockMovement(
+                organization_id=organization_id,
                 product_id=product.id,
                 quantity=qty,
                 type=MovementType.exit,
@@ -179,4 +238,4 @@ def advance_status(db: Session, order_id: int) -> OrderResponse:
 
     order.status = next_status
     db.commit()
-    return _build_response(_load_order(db, order_id))
+    return _build_response(_load_order(db, order_id, organization_id))

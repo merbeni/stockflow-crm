@@ -1,20 +1,28 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
+
+from app.schemas.validators import (
+    NombrePersona,
+    NombrePersonaOpcional,
+    TelefonoOpcional,
+    TextoObligatorio,
+)
 
 
 class SupplierCreate(BaseModel):
-    name: str = Field(..., max_length=255)
-    contact_name: str = Field(..., max_length=255)
+    # El nombre del proveedor es el de una empresa: admite números.
+    name: TextoObligatorio(255)
+    contact_name: NombrePersona()
     email: EmailStr
-    phone: str | None = Field(default=None, max_length=50)
+    phone: TelefonoOpcional = None
 
 
 class SupplierUpdate(BaseModel):
-    name: str | None = Field(default=None, max_length=255)
-    contact_name: str | None = Field(default=None, max_length=255)
+    name: TextoObligatorio(255) | None = None
+    contact_name: NombrePersonaOpcional() = None
     email: EmailStr | None = None
-    phone: str | None = Field(default=None, max_length=50)
+    phone: TelefonoOpcional = None
 
 
 class SupplierResponse(BaseModel):

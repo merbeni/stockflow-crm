@@ -25,7 +25,9 @@ class TestCreateCustomer:
         assert resp.json()["address"] is None
 
     def test_create_customer_requires_auth(self, client):
-        resp = client.post("/customers", json={"name": "X", "email": "x@x.com", "phone": "1"})
+        resp = client.post(
+            "/customers", json={"name": "Equis", "email": "x@x.com", "phone": "555-0000"}
+        )
         assert resp.status_code == 401
 
     def test_create_customer_invalid_email_returns_422(self, client, auth_headers):
@@ -35,6 +37,38 @@ class TestCreateCustomer:
             "phone": "555-0000",
         }, headers=auth_headers)
         assert resp.status_code == 422
+        cuerpo = resp.json()
+        # El detail siempre es un string: si fuera una lista de objetos, el
+        # frontend se quedaba en blanco al renderizarlo.
+        assert isinstance(cuerpo["detail"], str)
+        assert "email" in cuerpo["errors"]
+
+    def test_nombre_con_numeros_da_422(self, client, auth_headers):
+        resp = client.post("/customers", json={
+            "name": "Cliente 123",
+            "email": "num@test.com",
+            "phone": "555-0000",
+        }, headers=auth_headers)
+        assert resp.status_code == 422
+        assert "números" in resp.json()["errors"]["name"]
+
+    def test_telefono_invalido_da_422(self, client, auth_headers):
+        resp = client.post("/customers", json={
+            "name": "Sin Telefono",
+            "email": "tel@test.com",
+            "phone": "abc",
+        }, headers=auth_headers)
+        assert resp.status_code == 422
+        assert "phone" in resp.json()["errors"]
+
+    def test_nombre_con_solo_espacios_da_422(self, client, auth_headers):
+        resp = client.post("/customers", json={
+            "name": "    ",
+            "email": "espacios@test.com",
+            "phone": "555-0000",
+        }, headers=auth_headers)
+        assert resp.status_code == 422
+        assert "name" in resp.json()["errors"]
 
 
 class TestListCustomers:
@@ -121,3 +155,40 @@ class TestCustomerOrderHistory:
         assert resp.status_code == 200
         assert len(resp.json()["orders"]) == 1
         assert float(resp.json()["orders"][0]["total"]) == 20.0
+
+
+class TestAislamientoDeClientes:
+    def test_no_se_listan_clientes_de_otra_organizacion(
+        self, client, other_org_headers, make_customer
+    ):
+        make_customer(name="Cliente Propio", email="propio@test.com")
+        assert client.get("/customers", headers=other_org_headers).json() == []
+
+    def test_no_se_accede_a_un_cliente_ajeno(
+        self, client, other_org_headers, make_customer
+    ):
+        customer = make_customer()
+        assert (
+            client.get(f"/customers/{customer['id']}", headers=other_org_headers).status_code
+            == 404
+        )
+
+    def test_el_mismo_correo_puede_repetirse_en_otra_organizacion(
+        self, client, auth_headers, other_org_headers
+    ):
+        payload = {
+            "name": "Cliente Compartido",
+            "email": "compartido@test.com",
+            "phone": "555-7777",
+        }
+        assert client.post("/customers", json=payload, headers=auth_headers).status_code == 201
+        assert (
+            client.post("/customers", json=payload, headers=other_org_headers).status_code == 201
+        )
+
+    def test_no_se_ve_el_historial_de_un_cliente_ajeno(
+        self, client, other_org_headers, make_customer
+    ):
+        customer = make_customer()
+        resp = client.get(f"/customers/{customer['id']}/orders", headers=other_org_headers)
+        assert resp.status_code == 404

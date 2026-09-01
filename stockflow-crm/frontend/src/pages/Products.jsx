@@ -1,38 +1,132 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client'
+import { getErrorMessage, getFieldErrors } from '../api/errors'
+import ErrorBanner from '../components/ui/ErrorBanner'
+import FormField from '../components/ui/FormField'
 import Modal from '../components/ui/Modal'
+import {
+  cantidadStock,
+  numeroNoNegativo,
+  requerido,
+  sku as validarSku,
+  validarFormulario,
+} from '../utils/validation'
 
-const EMPTY = { sku: '', name: '', description: '', price: '', current_stock: '', minimum_stock: '' }
+const VACIO = {
+  sku: '',
+  name: '',
+  description: '',
+  price: '',
+  current_stock: '',
+  minimum_stock: '',
+  allow_decimal_stock: false,
+}
+
+// El nombre de un producto sí admite números ("Coca Cola 500ml"), a diferencia
+// del nombre de una persona.
+const REGLAS = {
+  sku: validarSku,
+  name: requerido,
+  price: numeroNoNegativo,
+  current_stock: (valor, valores) => cantidadStock(valor, valores.allow_decimal_stock),
+  minimum_stock: (valor, valores) => cantidadStock(valor, valores.allow_decimal_stock),
+}
+
+function formatearNumero(valor) {
+  const numero = parseFloat(valor)
+  return Number.isInteger(numero) ? String(numero) : String(numero)
+}
 
 export default function Products() {
   const [products, setProducts] = useState([])
-  const [modal, setModal] = useState(null) // null | 'create' | product object
-  const [form, setForm] = useState(EMPTY)
+  const [modal, setModal] = useState(null) // null | 'create' | producto
+  const [form, setForm] = useState(VACIO)
+  const [errores, setErrores] = useState({})
   const [error, setError] = useState('')
+  const [errorGeneral, setErrorGeneral] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
   async function load() {
     setLoading(true)
-    const { data } = await client.get('/products')
-    setProducts(data)
-    setLoading(false)
+    try {
+      const { data } = await client.get('/products')
+      setProducts(data)
+      setErrorGeneral('')
+    } catch (err) {
+      setErrorGeneral(getErrorMessage(err, 'No pudimos cargar los productos.'))
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
 
-  function openCreate() { setForm(EMPTY); setError(''); setModal('create') }
+  function openCreate() {
+    setForm(VACIO)
+    setErrores({})
+    setError('')
+    setModal('create')
+  }
+
   function openEdit(p) {
-    setForm({ sku: p.sku, name: p.name, description: p.description ?? '', price: p.price, current_stock: p.current_stock, minimum_stock: p.minimum_stock })
+    setForm({
+      sku: p.sku,
+      name: p.name,
+      description: p.description ?? '',
+      price: p.price,
+      current_stock: p.current_stock,
+      minimum_stock: p.minimum_stock,
+      allow_decimal_stock: p.allow_decimal_stock ?? false,
+    })
+    setErrores({})
     setError('')
     setModal(p)
+  }
+
+  function actualizar(campo, valor) {
+    setForm((f) => {
+      const siguiente = { ...f, [campo]: valor }
+      // Al cambiar el flag hay que revalidar las cantidades ya cargadas.
+      if (campo === 'allow_decimal_stock') {
+        setErrores((e) => ({
+          ...e,
+          current_stock: REGLAS.current_stock(siguiente.current_stock, siguiente),
+          minimum_stock: REGLAS.minimum_stock(siguiente.minimum_stock, siguiente),
+        }))
+      } else if (REGLAS[campo] && errores[campo]) {
+        setErrores((e) => ({ ...e, [campo]: REGLAS[campo](valor, siguiente) }))
+      }
+      return siguiente
+    })
+  }
+
+  function validarCampo(campo) {
+    if (!REGLAS[campo]) return
+    setErrores((e) => ({ ...e, [campo]: REGLAS[campo](form[campo], form) }))
   }
 
   async function handleSave(e) {
     e.preventDefault()
     setError('')
+
+    const encontrados = validarFormulario(form, REGLAS)
+    setErrores(encontrados)
+    if (Object.keys(encontrados).length > 0) {
+      setError('Revisá los campos marcados antes de guardar.')
+      return
+    }
+
     setSaving(true)
-    const body = { ...form, price: parseFloat(form.price), current_stock: parseFloat(form.current_stock), minimum_stock: parseFloat(form.minimum_stock) }
+    const body = {
+      ...form,
+      description: form.description.trim() || null,
+      price: parseFloat(form.price),
+      current_stock: parseFloat(form.current_stock),
+      minimum_stock: parseFloat(form.minimum_stock),
+    }
     try {
       if (modal === 'create') {
         await client.post('/products', body)
@@ -42,7 +136,10 @@ export default function Products() {
       setModal(null)
       load()
     } catch (err) {
-      setError(err.response?.data?.detail ?? 'Error saving product.')
+      // El modal permanece abierto: cerrar y perder lo cargado era justamente
+      // lo que hacía que un error pareciera que "no pasó nada".
+      setError(getErrorMessage(err, 'No pudimos guardar el producto.'))
+      setErrores((previos) => ({ ...previos, ...getFieldErrors(err) }))
     } finally {
       setSaving(false)
     }
@@ -53,113 +150,243 @@ export default function Products() {
       await client.put(`/products/${p.id}`, { is_active: !p.is_active })
       load()
     } catch (err) {
-      setError(err.response?.data?.detail ?? 'Could not update product.')
-      setModal('error')
+      setErrorGeneral(getErrorMessage(err, 'No pudimos actualizar el producto.'))
     }
   }
 
-  async function handleDelete(id) {
-    if (!confirm('Delete this product?')) return
+  async function handleDelete(p) {
+    if (!confirm(`¿Eliminar el producto «${p.name}»?`)) return
     try {
-      await client.delete(`/products/${id}`)
+      await client.delete(`/products/${p.id}`)
+      setErrorGeneral('')
       load()
     } catch (err) {
-      setError(err.response?.data?.detail ?? 'Cannot delete product.')
-      setModal('error')
+      setErrorGeneral(getErrorMessage(err, 'No pudimos eliminar el producto.'))
     }
   }
+
+  const decimalesActivos = Boolean(form.allow_decimal_stock)
+  const pasoCantidad = decimalesActivos ? '0.001' : '1'
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-xl font-bold text-tx-primary">Products</h1>
-        <button onClick={openCreate} className="bg-secondary text-secondary-text px-4 py-2 rounded-lg text-sm font-medium hover:bg-secondary-dark transition">+ New product</button>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-xl font-bold text-tx-primary">Productos</h1>
+        <button
+          onClick={openCreate}
+          className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-text transition hover:bg-secondary-dark"
+        >
+          + Nuevo producto
+        </button>
       </div>
 
+      <ErrorBanner
+        message={errorGeneral}
+        className="mb-4"
+        onDismiss={() => setErrorGeneral('')}
+      />
+
       {loading ? (
-        <p className="text-sm text-tx-muted">Loading…</p>
+        <p className="text-sm text-tx-muted">Cargando…</p>
       ) : (
-        <div className="bg-surface rounded-xl shadow overflow-hidden border border-brand-border">
+        <div className="overflow-hidden rounded-xl border border-brand-border bg-surface shadow">
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[500px] text-sm">
-            <thead className="bg-sidebar border-b border-brand-border text-xs text-tx-muted uppercase tracking-wide">
-              <tr>
-                {['SKU', 'Name', 'Price', 'Stock', 'Min stock', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {products.map(p => (
-                <tr key={p.id} className={!p.is_active ? 'opacity-50 bg-gray-50' : p.low_stock ? 'bg-red-50' : ''}>
-                  <td className="px-4 py-3 font-mono text-xs text-tx-secondary">{p.sku}</td>
-                  <td className="px-4 py-3 font-medium text-tx-primary">
-                    {p.name}
-                    {p.low_stock && p.is_active && <span className="ml-2 text-xs text-red-500 font-normal">low stock</span>}
-                    {!p.is_active && <span className="ml-2 text-xs text-tx-muted font-normal">inactive</span>}
-                  </td>
-                  <td className="px-4 py-3 text-tx-secondary">${parseFloat(p.price).toFixed(2)}</td>
-                  <td className="px-4 py-3 text-tx-secondary">{parseFloat(p.current_stock)}</td>
-                  <td className="px-4 py-3 text-tx-secondary">{parseFloat(p.minimum_stock)}</td>
-                  <td className="px-4 py-3 text-right space-x-3">
-                    <button onClick={() => openEdit(p)} className="text-primary-text hover:underline text-xs">Edit</button>
-                    <button onClick={() => handleToggleActive(p)} className={`text-xs hover:underline ${p.is_active ? 'text-amber-500' : 'text-green-600'}`}>
-                      {p.is_active ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:underline text-xs">Delete</button>
-                  </td>
+            <table className="w-full min-w-[560px] text-sm">
+              <thead className="border-b border-brand-border bg-sidebar text-xs uppercase tracking-wide text-tx-muted">
+                <tr>
+                  {['SKU', 'Nombre', 'Precio', 'Stock', 'Stock mínimo', ''].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left font-medium">
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-              {products.length === 0 && (
-                <tr><td colSpan={6} className="px-4 py-6 text-center text-tx-muted">No products yet.</td></tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {products.map((p) => (
+                  <tr
+                    key={p.id}
+                    className={
+                      !p.is_active ? 'bg-gray-50 opacity-50' : p.low_stock ? 'bg-red-50' : ''
+                    }
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-tx-secondary">{p.sku}</td>
+                    <td className="px-4 py-3 font-medium text-tx-primary">
+                      {p.name}
+                      {p.low_stock && p.is_active && (
+                        <span className="ml-2 text-xs font-normal text-red-500">stock bajo</span>
+                      )}
+                      {!p.is_active && (
+                        <span className="ml-2 text-xs font-normal text-tx-muted">inactivo</span>
+                      )}
+                      {p.allow_decimal_stock && (
+                        <span className="ml-2 text-xs font-normal text-tx-muted">a granel</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-tx-secondary">
+                      ${parseFloat(p.price).toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3 text-tx-secondary">
+                      {formatearNumero(p.current_stock)}
+                    </td>
+                    <td className="px-4 py-3 text-tx-secondary">
+                      {formatearNumero(p.minimum_stock)}
+                    </td>
+                    <td className="space-x-3 px-4 py-3 text-right">
+                      <button
+                        onClick={() => openEdit(p)}
+                        className="text-xs text-primary-text hover:underline"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(p)}
+                        className={`text-xs hover:underline ${
+                          p.is_active ? 'text-amber-500' : 'text-green-600'
+                        }`}
+                      >
+                        {p.is_active ? 'Desactivar' : 'Activar'}
+                      </button>
+                      {/* El backend informa si el producto se puede borrar, así
+                          que el botón se deshabilita con el motivo a la vista
+                          en lugar de fallar recién al pulsarlo. */}
+                      <button
+                        onClick={() => handleDelete(p)}
+                        disabled={p.can_delete === false}
+                        title={p.delete_blocked_reason ?? 'Eliminar el producto'}
+                        className="text-xs text-red-500 hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {products.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-center text-tx-muted">
+                      Todavía no hay productos.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {modal === 'error' && (
-        <Modal title="Cannot delete product" onClose={() => setModal(null)}>
-          <p className="text-sm text-tx-secondary">{error}</p>
-          <div className="flex justify-end mt-4">
-            <button onClick={() => setModal(null)} className="px-4 py-1.5 text-sm rounded-lg bg-secondary text-secondary-text hover:bg-secondary-dark">OK</button>
-          </div>
-        </Modal>
-      )}
+      {modal && (
+        <Modal
+          title={modal === 'create' ? 'Nuevo producto' : 'Editar producto'}
+          onClose={() => setModal(null)}
+          disabled={saving}
+        >
+          <form onSubmit={handleSave} noValidate className="space-y-3">
+            <ErrorBanner message={error} />
 
-      {modal && modal !== 'error' && (
-        <Modal title={modal === 'create' ? 'New product' : 'Edit product'} onClose={() => setModal(null)} disabled={saving}>
-          <form onSubmit={handleSave} className="space-y-3">
-            {error && <p className="text-xs text-red-600 bg-red-50 rounded px-2 py-1">{error}</p>}
-            {[
-              { key: 'sku', label: 'SKU', type: 'text', disabled: modal !== 'create' },
-              { key: 'name', label: 'Name', type: 'text' },
-              { key: 'description', label: 'Description', type: 'text' },
-              { key: 'price', label: 'Price', type: 'number' },
-              { key: 'current_stock', label: 'Current stock', type: 'number' },
-              { key: 'minimum_stock', label: 'Minimum stock', type: 'number' },
-            ].map(({ key, label, type, disabled }) => (
-              <div key={key}>
-                <label className="block text-xs font-medium text-tx-secondary mb-1">{label}</label>
+            <FormField
+              name="sku"
+              label="SKU"
+              required
+              disabled={modal !== 'create' || saving}
+              value={form.sku}
+              error={errores.sku}
+              hint={modal !== 'create' ? 'El SKU no se puede modificar.' : undefined}
+              onChange={(e) => actualizar('sku', e.target.value)}
+              onBlur={() => validarCampo('sku')}
+            />
+            <FormField
+              name="name"
+              label="Nombre"
+              required
+              disabled={saving}
+              value={form.name}
+              error={errores.name}
+              onChange={(e) => actualizar('name', e.target.value)}
+              onBlur={() => validarCampo('name')}
+            />
+            <FormField
+              name="description"
+              label="Descripción"
+              disabled={saving}
+              value={form.description}
+              hint="Opcional."
+              onChange={(e) => actualizar('description', e.target.value)}
+            />
+            <FormField
+              name="price"
+              label="Precio"
+              type="number"
+              step="0.01"
+              min="0"
+              required
+              disabled={saving}
+              value={form.price}
+              error={errores.price}
+              onChange={(e) => actualizar('price', e.target.value)}
+              onBlur={() => validarCampo('price')}
+            />
+
+            <FormField name="allow_decimal_stock" label="Unidad de medida">
+              <label className="flex items-start gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm">
                 <input
-                  type={type}
-                  step="any"
-                  disabled={disabled || saving}
-                  value={form[key]}
-                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:bg-gray-50 disabled:text-tx-muted"
+                  id="campo-allow_decimal_stock"
+                  type="checkbox"
+                  className="mt-0.5"
+                  disabled={saving}
+                  checked={decimalesActivos}
+                  onChange={(e) => actualizar('allow_decimal_stock', e.target.checked)}
                 />
-              </div>
-            ))}
+                <span className="text-tx-secondary">
+                  Admite stock decimal
+                  <span className="block text-xs text-tx-muted">
+                    Activalo solo para productos a granel (kilos, litros, metros).
+                    Los productos por unidad no pueden tener existencias como 3,5.
+                  </span>
+                </span>
+              </label>
+            </FormField>
+
+            <FormField
+              name="current_stock"
+              label="Stock actual"
+              type="number"
+              step={pasoCantidad}
+              min="0"
+              required
+              disabled={saving}
+              value={form.current_stock}
+              error={errores.current_stock}
+              onChange={(e) => actualizar('current_stock', e.target.value)}
+              onBlur={() => validarCampo('current_stock')}
+            />
+            <FormField
+              name="minimum_stock"
+              label="Stock mínimo"
+              type="number"
+              step={pasoCantidad}
+              min="0"
+              required
+              disabled={saving}
+              value={form.minimum_stock}
+              error={errores.minimum_stock}
+              onChange={(e) => actualizar('minimum_stock', e.target.value)}
+              onBlur={() => validarCampo('minimum_stock')}
+            />
+
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setModal(null)} disabled={saving} className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-sidebar disabled:opacity-50">Cancel</button>
+              <button
+                type="button"
+                onClick={() => setModal(null)}
+                disabled={saving}
+                className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
+              >
+                Cancelar
+              </button>
               <button
                 type="submit"
-                disabled={saving || !form.sku.trim() || !form.name.trim() || form.price === '' || form.current_stock === '' || form.minimum_stock === ''}
-                className="px-4 py-1.5 text-sm rounded-lg bg-secondary text-secondary-text hover:bg-secondary-dark disabled:opacity-50 disabled:cursor-not-allowed min-w-[80px]"
+                disabled={saving}
+                className="min-w-[90px] rounded-lg bg-secondary px-4 py-1.5 text-sm text-secondary-text hover:bg-secondary-dark disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
           </form>
