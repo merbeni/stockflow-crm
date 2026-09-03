@@ -48,11 +48,11 @@ StockFlow CRM permite a un negocio:
 |---|---|
 | Frontend | React 18 + Vite + Tailwind CSS |
 | Backend | Python 3.13 + FastAPI |
-| Base de datos | PostgreSQL 16 |
+| Base de datos | PostgreSQL 17 — **Supabase** en producción (cualquier PostgreSQL 14+ en local) |
 | IA | Gemini 2.5 Flash (Google AI Studio) |
 | ORM / Migraciones | SQLAlchemy 2 + Alembic |
 | Autenticación | JWT (python-jose + bcrypt) |
-| Email | SendGrid |
+| Email | SMTP genérico (`smtplib`) — **Brevo** en producción |
 | Tests backend | pytest + httpx + pytest-mock |
 | Tests frontend | Vitest + React Testing Library |
 
@@ -115,6 +115,11 @@ npm install
 
 ## Base de datos
 
+> **Local vs. producción.** Para desarrollo podés usar un PostgreSQL local (abajo)
+> o directamente una base gratis de **Supabase**. En producción se usa Supabase.
+> El detalle (regiones, Session pooler, SSL) está en
+> [`docs/despliegue/DESPLIEGUE.md`](docs/despliegue/DESPLIEGUE.md).
+
 ### Crear la base de datos en PostgreSQL
 
 ```sql
@@ -176,7 +181,7 @@ No hay usuarios precargados. El primer paso es registrarse:
 1. Entrar a `http://localhost:5173/signup`.
 2. Completar el nombre de la organización y los datos de contacto del administrador.
 3. Abrir el enlace de verificación que llega por correo (en desarrollo, sin
-   SendGrid configurado, el enlace aparece en el log del backend).
+   SMTP configurado, el enlace aparece en el log del backend).
 4. Iniciar sesión: esa cuenta queda como **administrador de su organización**.
 
 Cada registro crea una organización independiente: sus productos, proveedores,
@@ -218,9 +223,15 @@ GOOGLE_API_KEY=tu_clave_de_google_ai_studio
 # Modelo de Gemini a usar
 GEMINI_MODEL=gemini-2.5-flash
 
-# SendGrid (opcional — si se omite, los emails se silencian sin error)
-SENDGRID_API_KEY=
-SMTP_FROM_EMAIL=
+# Correo por SMTP (opcional — si SMTP_HOST/USER/PASSWORD quedan vacíos, los
+# emails se silencian sin error y el enlace de verificación se escribe en el log).
+# Sirve cualquier proveedor; en producción se usa Brevo (300 correos/día gratis).
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USER=
+SMTP_PASSWORD=
+SMTP_FROM_EMAIL=remitente_verificado@tudominio.com
+SMTP_FROM_NAME=StockFlow CRM
 
 # Orígenes permitidos por CORS, separados por coma.
 # Nunca usar "*" en producción: es incompatible con el envío de credenciales.
@@ -230,11 +241,11 @@ CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 FRONTEND_URL=http://localhost:5173
 ```
 
-> **Verificación de correo en desarrollo:** si `SENDGRID_API_KEY` está vacía, el
-> enlace de verificación **se escribe en el log del servidor** en lugar de
-> enviarse por mail. Buscá una línea que empiece con
-> *"SendGrid no está configurado. Enlace de verificación para…"* y abrila en el
-> navegador.
+> **Verificación de correo en desarrollo:** si el SMTP no está configurado
+> (`SMTP_HOST`, `SMTP_USER` o `SMTP_PASSWORD` vacíos), el enlace de verificación
+> **se escribe en el log del servidor** en lugar de enviarse por mail. Buscá una
+> línea que empiece con *"SMTP no está configurado. Enlace de verificación
+> para…"* y abrila en el navegador.
 
 ### Frontend — `frontend/.env`
 
@@ -447,7 +458,7 @@ stockflow-crm/
 - Agregar/quitar ítems (valida stock disponible y la unidad de medida del producto).
 - Avanzar estado: `pending → processing → shipped → delivered`.
   - En el paso `processing` se deduce el stock automáticamente y se crea un movimiento de tipo `exit`.
-  - Se envía email de notificación al cliente en cada cambio de estado (si SendGrid está configurado).
+  - Se envía email de notificación al cliente en cada cambio de estado (si el SMTP está configurado).
 
 ---
 
@@ -513,23 +524,31 @@ La documentación completa e interactiva (Swagger UI) está en **`http://localho
 
 ## Despliegue en Azure
 
-El proyecto está desplegado en Azure con CI/CD automático vía GitHub Actions: cada push a `main` actualiza el frontend y el backend sin intervención manual.
+El backend y el frontend están en **Azure**; la base de datos en **Supabase** y el
+correo en **Brevo**. La guía completa paso a paso (incluida la regeneración desde
+cero y la solución de problemas reales) está en
+[`docs/despliegue/DESPLIEGUE.md`](docs/despliegue/DESPLIEGUE.md).
 
 ### URLs de producción
 
 | Componente | URL |
 |---|---|
-| Frontend | https://proud-smoke-07bfb670f.azurestaticapps.net |
+| Frontend | https://proud-smoke-07bfb670f.7.azurestaticapps.net |
 | Backend | https://stockflow-backend-btczc8eahbaaafd6.canadacentral-01.azurewebsites.net |
 | Docs API | https://stockflow-backend-btczc8eahbaaafd6.canadacentral-01.azurewebsites.net/docs |
 
-### Servicios y plan utilizado
+### Servicios utilizados
 
-| Componente | Servicio Azure | Plan |
+| Componente | Servicio | Plan |
 |---|---|---|
-| Frontend | Azure Static Web Apps | Free |
-| Backend | Azure App Service | Basic B1 |
-| Base de datos | Azure Database for PostgreSQL Flexible Server | Burstable B1ms |
+| Frontend | Azure Static Web Apps (vinculado a GitHub `main`) | Free |
+| Backend | Azure App Service (Linux, despliegue por zip / `az webapp deploy`) | Basic B1 |
+| Base de datos | Supabase (PostgreSQL gestionado) | Free |
+| Correo | Brevo (relay SMTP) | Free |
+
+> **Importante — conexión a la base desde Azure:** App Service sale por **IPv4** y
+> la conexión directa de Supabase es solo **IPv6**. En producción hay que usar la
+> cadena del **Session pooler** de Supabase (IPv4). Ver la guía de despliegue.
 
 Para despliegue local o en otro proveedor, cualquier servidor que soporte Python ASGI y PostgreSQL funciona (Railway, Render, Fly.io, etc.).
 
@@ -549,10 +568,12 @@ Para despliegue local o en otro proveedor, cualquier servidor que soporte Python
 - Sin autoescalado (instancia fija).
 - Costo aproximado: **~$13 USD/mes** (canadacentral).
 
-#### Azure Database for PostgreSQL Flexible Server
-- Las primeras 750 horas/mes de Burstable B1ms y 32 GB de almacenamiento son **gratuitas durante los primeros 12 meses** para cuentas Azure nuevas.
-- Vencido ese período, el costo aproximado es **~$13 USD/mes** (B1ms, canadacentral).
-- Límites del tier B1ms: 1 vCPU, 2 GB RAM, 32 GB almacenamiento, hasta 396 conexiones.
+#### Supabase — PostgreSQL (Free)
+- **Gratis de forma permanente** (no es un trial): la base no se elimina.
+- Hasta 500 MB de base de datos y 5 GB de transferencia por mes.
+- El proyecto se pausa tras un período largo de inactividad (se reactiva desde el panel).
+- Desde Azure hay que conectarse por el **Session pooler** (IPv4); la conexión
+  directa es solo IPv6. Ver [`docs/despliegue/DESPLIEGUE.md`](docs/despliegue/DESPLIEGUE.md).
 
 #### Google AI Studio — Gemini 2.5 Flash (Free)
 - **15 solicitudes por minuto (RPM).**
@@ -560,10 +581,12 @@ Para despliegue local o en otro proveedor, cualquier servidor que soporte Python
 - 1.000.000 tokens por minuto (TPM).
 - Sin costo mientras se permanezca dentro de estos límites; se puede pagar por uso si se necesita escalar.
 
-#### SendGrid — Free
-- **100 emails por día.** Este límite es permanente (no se renueva con más tiempo, es el tope del plan gratuito).
-- Si se envían más de 100 emails en un día (entre notificaciones de pedidos, alertas de stock y bienvenidas), los excedentes serán rechazados hasta el día siguiente.
+#### Brevo — SMTP (Free)
+- **300 emails por día.** Límite permanente del plan gratuito.
+- Si se superan (entre notificaciones de pedidos, alertas de stock y verificaciones), los excedentes se rechazan hasta el día siguiente.
 - 1 remitente verificado en el plan gratuito.
+- El backend usa SMTP genérico, así que se puede cambiar de proveedor (Gmail,
+  Mailjet, etc.) tocando solo las variables `SMTP_*`, sin cambiar código.
 
 ---
 

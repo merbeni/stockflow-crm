@@ -14,6 +14,5 @@ email-validator==2.2.0
 # AI invoice processing — Gemini 2.5 Flash (native vision, no OCR needed)
 google-genai>=1.5.0
 
-# Email notifications
-sendgrid>=6.11.0
+# Email notifications — SMTP (smtplib, incluido en la stdlib) + PDF adjuntos
 reportlab>=4.0.0

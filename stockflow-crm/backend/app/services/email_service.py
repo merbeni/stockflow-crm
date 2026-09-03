@@ -1,6 +1,7 @@
-import base64
 import logging
+import smtplib
 from decimal import Decimal
+from email.message import EmailMessage
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -8,10 +9,6 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import (
-    Attachment, Disposition, FileContent, FileName, FileType, Mail,
-)
 
 from app.core.config import settings
 
@@ -98,27 +95,31 @@ def _build_order_pdf(
     return buffer.getvalue()
 
 
-# ── SendGrid helper ───────────────────────────────────────────────────────────
+# ── SMTP helper ───────────────────────────────────────────────────────────────
 
 def _send(to_email: str, subject: str, html: str, pdf_bytes: bytes | None = None, pdf_name: str = "order.pdf") -> None:
-    """Send via SendGrid. Skips silently if API key is not configured."""
-    if not settings.SENDGRID_API_KEY:
+    """Envía por SMTP. Se omite en silencio si el SMTP no está configurado."""
+    if not settings.email_enabled:
         return
-    try:
-        message = Mail(
-            from_email=settings.SMTP_FROM_EMAIL or "noreply@stockflow.app",
-            to_emails=to_email,
-            subject=subject,
-            html_content=html,
+
+    from_email = settings.SMTP_FROM_EMAIL or settings.SMTP_USER
+    message = EmailMessage()
+    message["From"] = f"{settings.SMTP_FROM_NAME} <{from_email}>" if settings.SMTP_FROM_NAME else from_email
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content("Este mensaje se ve mejor en un cliente de correo compatible con HTML.")
+    message.add_alternative(html, subtype="html")
+
+    if pdf_bytes:
+        message.add_attachment(
+            pdf_bytes, maintype="application", subtype="pdf", filename=pdf_name
         )
-        if pdf_bytes:
-            message.add_attachment(Attachment(
-                file_content=FileContent(base64.b64encode(pdf_bytes).decode()),
-                file_name=FileName(pdf_name),
-                file_type=FileType("application/pdf"),
-                disposition=Disposition("attachment"),
-            ))
-        SendGridAPIClient(settings.SENDGRID_API_KEY).send(message)
+
+    try:
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=20) as server:
+            server.starttls()
+            server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
+            server.send_message(message)
     except Exception:
         logger.exception("Failed to send email to %s (subject: %s)", to_email, subject)
 
@@ -175,14 +176,14 @@ def send_verification_email(
     """
     Envía el enlace de verificación de correo.
 
-    Si SendGrid no está configurado (entorno de desarrollo), el enlace se
+    Si el SMTP no está configurado (entorno de desarrollo), el enlace se
     escribe en el log del servidor para no bloquear las pruebas.
     """
     enlace = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={token}"
 
-    if not settings.SENDGRID_API_KEY:
+    if not settings.email_enabled:
         logger.warning(
-            "SendGrid no está configurado. Enlace de verificación para %s: %s",
+            "SMTP no está configurado. Enlace de verificación para %s: %s",
             user_email,
             enlace,
         )
