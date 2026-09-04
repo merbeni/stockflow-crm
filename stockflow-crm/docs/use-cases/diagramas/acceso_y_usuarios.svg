@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="840" viewBox="0 0 1000 840" font-family="Segoe UI,Arial">
+<rect width="1000" height="840" fill="#FFFFFF"/>
+<text x="500.0" y="34" text-anchor="middle" font-size="17" font-weight="700" fill="#1A56DB">Acceso, organizaciones y usuarios</text>
+<text x="500.0" y="54" text-anchor="middle" font-size="11" fill="#6B7280">StockFlow CRM — Diagrama de casos de uso</text>
+<rect x="300" y="84" width="400" height="656" rx="8" fill="#ECFDF5" stroke="#065F46" stroke-width="1.4"/>
+<text x="500.0" y="106" text-anchor="middle" font-size="11" font-weight="700" fill="#065F46">SISTEMA: StockFlow CRM</text>
+<ellipse cx="500.0" cy="152" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="153" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Registrar una organización</text>
+<text x="500.0" y="180" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-20</text>
+<ellipse cx="500.0" cy="240" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="234" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Confirmar la dirección</text>
+<text x="500.0" y="248" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">de correo</text>
+<text x="500.0" y="268" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-21</text>
+<ellipse cx="500.0" cy="328" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="322" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Solicitar un nuevo enlace</text>
+<text x="500.0" y="336" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">de confirmación</text>
+<text x="500.0" y="356" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-22</text>
+<ellipse cx="500.0" cy="416" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="417" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Iniciar sesión</text>
+<text x="500.0" y="444" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-01</text>
+<ellipse cx="500.0" cy="504" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="505" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Cerrar sesión</text>
+<text x="500.0" y="532" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-02</text>
+<ellipse cx="500.0" cy="592" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="586" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Consultar los datos</text>
+<text x="500.0" y="600" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">de la propia cuenta</text>
+<text x="500.0" y="620" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-03</text>
+<ellipse cx="500.0" cy="680" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="674" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Administrar los usuarios</text>
+<text x="500.0" y="688" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">del equipo</text>
+<text x="500.0" y="708" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-23</text>
+<circle cx="118" cy="126.0" r="11" fill="none" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="137.0" x2="118" y2="166.0" stroke="#111827" stroke-width="2"/>
+<line x1="102" y1="148.0" x2="134" y2="148.0" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="166.0" x2="104" y2="188.0" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="166.0" x2="132" y2="188.0" stroke="#111827" stroke-width="2"/>
+<text x="118" y="206.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">Visitante</text>
+<line x1="140" y1="150.0" x2="322.0" y2="152" stroke="#9CA3AF" stroke-width="1.2"/>
+<circle cx="118" cy="258.0" r="11" fill="none" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="269.0" x2="118" y2="298.0" stroke="#111827" stroke-width="2"/>
+<line x1="102" y1="280.0" x2="134" y2="280.0" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="298.0" x2="104" y2="320.0" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="298.0" x2="132" y2="320.0" stroke="#111827" stroke-width="2"/>
+<text x="118" y="338.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">Usuario</text>
+<text x="118" y="352.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">recién registrado</text>
+<line x1="140" y1="282.0" x2="322.0" y2="240" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="282.0" x2="322.0" y2="328" stroke="#9CA3AF" stroke-width="1.2"/>
+<circle cx="118" cy="478.0" r="11" fill="none" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="489.0" x2="118" y2="518.0" stroke="#111827" stroke-width="2"/>
+<line x1="102" y1="500.0" x2="134" y2="500.0" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="518.0" x2="104" y2="540.0" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="518.0" x2="132" y2="540.0" stroke="#111827" stroke-width="2"/>
+<text x="118" y="558.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">Usuario</text>
+<text x="118" y="572.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">autenticado</text>
+<line x1="140" y1="502.0" x2="322.0" y2="416" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="502.0" x2="322.0" y2="504" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="502.0" x2="322.0" y2="592" stroke="#9CA3AF" stroke-width="1.2"/>
+<circle cx="882" cy="214.0" r="11" fill="none" stroke="#111827" stroke-width="2"/>
+<line x1="882" y1="225.0" x2="882" y2="254.0" stroke="#111827" stroke-width="2"/>
+<line x1="866" y1="236.0" x2="898" y2="236.0" stroke="#111827" stroke-width="2"/>
+<line x1="882" y1="254.0" x2="868" y2="276.0" stroke="#111827" stroke-width="2"/>
+<line x1="882" y1="254.0" x2="896" y2="276.0" stroke="#111827" stroke-width="2"/>
+<text x="882" y="294.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">Servicio</text>
+<text x="882" y="308.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">de correo</text>
+<line x1="860" y1="238.0" x2="678.0" y2="152" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="860" y1="238.0" x2="678.0" y2="240" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="860" y1="238.0" x2="678.0" y2="328" stroke="#9CA3AF" stroke-width="1.2"/>
+<circle cx="882" cy="644" r="11" fill="none" stroke="#111827" stroke-width="2"/>
+<line x1="882" y1="655" x2="882" y2="684" stroke="#111827" stroke-width="2"/>
+<line x1="866" y1="666" x2="898" y2="666" stroke="#111827" stroke-width="2"/>
+<line x1="882" y1="684" x2="868" y2="706" stroke="#111827" stroke-width="2"/>
+<line x1="882" y1="684" x2="896" y2="706" stroke="#111827" stroke-width="2"/>
+<text x="882" y="724" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">Administrador</text>
+<line x1="860" y1="668" x2="678.0" y2="680" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="500.0" y="782" text-anchor="middle" font-size="11" font-style="italic" fill="#6B7280">El administrador es un usuario autenticado con permisos adicionales: hereda todos sus casos de uso y suma la gestión del equipo.</text>
+</svg>

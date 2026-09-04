@@ -386,10 +386,10 @@ stockflow-crm/
 |---|---|---|
 | **DER** | [`docs/der/DER.md`](docs/der/DER.md) | Modelo de datos en Mermaid (se renderiza en GitHub): 11 tablas, decisiones de diseño, políticas de borrado y unicidad por organización. Reemplaza al `DER.png` anterior. |
 | **Despliegue** | [`docs/despliegue/DESPLIEGUE.md`](docs/despliegue/DESPLIEGUE.md) | Guía de infraestructura (Supabase + Brevo + Azure), variables de entorno, verificación y solución de problemas. |
-| **Casos de uso** | `docs/use-cases/` | 28 casos de uso en 10 módulos, incluido el alta pública, la verificación de correo, la gestión de usuarios y el aislamiento multi-tenant. |
+| **Casos de uso** | `docs/use-cases/` | 28 casos de uso en 10 módulos, redactados en lenguaje de negocio (el *qué*, no el *cómo*). Incluye 4 diagramas UML con actores en [`docs/use-cases/diagramas/`](docs/use-cases/diagramas/). |
+| **Diagramas de flujo** | [`docs/flows/DIAGRAMAS_DE_FLUJO.md`](docs/flows/DIAGRAMAS_DE_FLUJO.md) | 12 diagramas de proceso: autenticación, facturas con IA, ABM de productos, proveedores y clientes, pedidos, usuarios y flujos integrales. |
 | **Casos de prueba** | `docs/test-cases/` | 182 casos que reflejan la suite automatizada (189 tests, 0 fallos). |
-| **Manual de usuario** | `docs/user-manual/` | Manual funcional (v2.0), con el registro de la organización, la verificación de correo y la gestión de usuarios. |
-| **Diagramas de flujo** | `docs/flows/` | Diagramas de los flujos principales. |
+| **Manual de usuario** | `docs/user-manual/` | Manual funcional (v2.0). Describe **cómo operar** el sistema; la lógica de los procesos vive en los diagramas de flujo. |
 
 ---
 

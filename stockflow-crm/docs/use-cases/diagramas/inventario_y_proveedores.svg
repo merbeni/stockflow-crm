@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="928" viewBox="0 0 1000 928" font-family="Segoe UI,Arial">
+<rect width="1000" height="928" fill="#FFFFFF"/>
+<text x="500.0" y="34" text-anchor="middle" font-size="17" font-weight="700" fill="#1A56DB">Inventario y proveedores</text>
+<text x="500.0" y="54" text-anchor="middle" font-size="11" fill="#6B7280">StockFlow CRM — Diagrama de casos de uso</text>
+<rect x="300" y="84" width="400" height="744" rx="8" fill="#ECFDF5" stroke="#065F46" stroke-width="1.4"/>
+<text x="500.0" y="106" text-anchor="middle" font-size="11" font-weight="700" fill="#065F46">SISTEMA: StockFlow CRM</text>
+<ellipse cx="500.0" cy="152" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="153" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Registrar un producto</text>
+<text x="500.0" y="180" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-04</text>
+<ellipse cx="500.0" cy="240" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="241" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Modificar un producto</text>
+<text x="500.0" y="268" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-05</text>
+<ellipse cx="500.0" cy="328" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="329" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Dar de baja un producto</text>
+<text x="500.0" y="356" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-06</text>
+<ellipse cx="500.0" cy="416" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="417" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Gestionar artículos a granel</text>
+<text x="500.0" y="444" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-24</text>
+<ellipse cx="500.0" cy="504" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="505" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Registrar un proveedor</text>
+<text x="500.0" y="532" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-07</text>
+<ellipse cx="500.0" cy="592" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="586" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Modificar o dar de baja</text>
+<text x="500.0" y="600" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">un proveedor</text>
+<text x="500.0" y="620" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-08</text>
+<ellipse cx="500.0" cy="680" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="674" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Consultar el historial</text>
+<text x="500.0" y="688" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">de movimientos</text>
+<text x="500.0" y="708" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-18</text>
+<ellipse cx="500.0" cy="768" rx="178" ry="34" fill="#FFFFFF" stroke="#1A56DB" stroke-width="1.6"/>
+<text x="500.0" y="762" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">Filtrar el historial</text>
+<text x="500.0" y="776" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11.5" fill="#111827">de movimientos</text>
+<text x="500.0" y="796" text-anchor="middle" font-family="Segoe UI,Arial" font-size="8.5" fill="#6B7280">UC-19</text>
+<circle cx="118" cy="434.0" r="11" fill="none" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="445.0" x2="118" y2="474.0" stroke="#111827" stroke-width="2"/>
+<line x1="102" y1="456.0" x2="134" y2="456.0" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="474.0" x2="104" y2="496.0" stroke="#111827" stroke-width="2"/>
+<line x1="118" y1="474.0" x2="132" y2="496.0" stroke="#111827" stroke-width="2"/>
+<text x="118" y="514.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">Usuario autenticado</text>
+<text x="118" y="528.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">(operador o</text>
+<text x="118" y="542.0" text-anchor="middle" font-family="Segoe UI,Arial" font-size="12" font-weight="600" fill="#111827">administrador)</text>
+<line x1="140" y1="458.0" x2="322.0" y2="152" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="458.0" x2="322.0" y2="240" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="458.0" x2="322.0" y2="328" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="458.0" x2="322.0" y2="416" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="458.0" x2="322.0" y2="504" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="458.0" x2="322.0" y2="592" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="458.0" x2="322.0" y2="680" stroke="#9CA3AF" stroke-width="1.2"/>
+<line x1="140" y1="458.0" x2="322.0" y2="768" stroke="#9CA3AF" stroke-width="1.2"/>
+<text x="500.0" y="870" text-anchor="middle" font-size="11" font-style="italic" fill="#6B7280">Ambos roles operan el inventario, los proveedores y el historial de movimientos. La gestión de usuarios es exclusiva del administrador (ver UC-23).</text>
+</svg>
