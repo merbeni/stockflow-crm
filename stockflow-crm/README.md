@@ -372,26 +372,24 @@ stockflow-crm/
 │   └── vite.config.js
 │
 └── docs/
+    ├── der/                         # Modelo de datos (DER.md — Mermaid)
+    ├── despliegue/                  # Guía de infraestructura y despliegue
     ├── user-manual/                 # Manual de usuario (Word)
-    ├── use-cases/
-    ├── flows/
-    └── test-cases/
+    ├── use-cases/                   # Casos de uso (Excel)
+    ├── test-cases/                  # Casos de prueba (Excel)
+    └── flows/                       # Diagramas de flujo
 ```
 
-> **Documentación a regenerar.** Los archivos de `docs/` son binarios (PNG, DOCX,
-> XLSX) y hay que actualizarlos a mano tras estos cambios:
-> - **DER** (`docs/der/DER.png`): agregar la tabla `organizations` y la clave
->   foránea `organization_id` en `users`, `products`, `suppliers`, `customers`,
->   `orders`, `invoices`, `stock_movements` y `product_supplier_mappings`. El SKU
->   de `products` y el correo de `customers` pasaron de únicos globales a únicos
->   por organización. `users` suma `full_name`, `phone`, `is_active`,
->   `is_email_verified` y los campos del token de verificación; `products` suma
->   `allow_decimal_stock`.
-> - **Manual de usuario**: documentar el registro público, la verificación de
->   correo y la pantalla de gestión de usuarios.
-> - **Casos de uso y de prueba**: incorporar los escenarios nuevos (documento que
->   no es una factura, rango de fechas inválido, stock decimal, borrado de
->   productos y aislamiento entre organizaciones).
+### Contenido de `docs/`
+
+| Documento | Archivo | Contenido |
+|---|---|---|
+| **DER** | [`docs/der/DER.md`](docs/der/DER.md) | Modelo de datos en Mermaid (se renderiza en GitHub): 11 tablas, decisiones de diseño, políticas de borrado y unicidad por organización. Reemplaza al `DER.png` anterior. |
+| **Despliegue** | [`docs/despliegue/DESPLIEGUE.md`](docs/despliegue/DESPLIEGUE.md) | Guía de infraestructura (Supabase + Brevo + Azure), variables de entorno, verificación y solución de problemas. |
+| **Casos de uso** | `docs/use-cases/` | 28 casos de uso en 10 módulos, incluido el alta pública, la verificación de correo, la gestión de usuarios y el aislamiento multi-tenant. |
+| **Casos de prueba** | `docs/test-cases/` | 182 casos que reflejan la suite automatizada (189 tests, 0 fallos). |
+| **Manual de usuario** | `docs/user-manual/` | Manual funcional (v2.0), con el registro de la organización, la verificación de correo y la gestión de usuarios. |
+| **Diagramas de flujo** | `docs/flows/` | Diagramas de los flujos principales. |
 
 ---
 
