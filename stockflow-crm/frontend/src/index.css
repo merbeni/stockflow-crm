@@ -52,10 +52,17 @@
   /* ── Acciones de fila ────────────────────────────────────────────────────
    * Cada acción tiene su propio color, y el color significa siempre lo mismo:
    *
-   *   azul  → cambia datos, es reversible y no rompe nada  (Editar)
-   *   verde → devuelve algo al uso                          (Activar)
-   *   ámbar → saca algo de circulación, se puede deshacer    (Desactivar)
-   *   rojo  → destruye, no se puede deshacer                 (Eliminar)
+   *   azul    → cambia datos, es reversible y no rompe nada  (Editar)
+   *   verde   → devuelve algo al uso                         (Activar)
+   *   violeta → cambia permisos                              (Hacer operador)
+   *   ámbar   → saca algo de circulación, se puede deshacer   (Desactivar)
+   *   rojo    → destruye, no se puede deshacer                (Eliminar)
+   *
+   * El violeta existe porque el cambio de rol y la desactivación compartían el
+   * ámbar y en la fila de usuarios quedaban dos botones idénticos al lado del
+   * otro. Son cosas distintas: una toca los permisos, la otra la disponibilidad
+   * de la cuenta. El violeta no aparece en ninguna otra parte del sistema, así
+   * que basta verlo para saber que se está tocando quién puede hacer qué.
    *
    * El verde de marca no se usa acá: ya significa «activo», y un botón
    * «Editar» verde se leería como «activar».
@@ -74,6 +81,24 @@
   --color-act-on-bg: #DCFCE7;
   --color-act-on-border: #15803D;     /* 4.59:1 */
   --color-act-on-text: #166534;       /* 6.49:1 */
+
+  /* ── La fila de tu propia cuenta ─────────────────────────────────────────
+   * Es la fila sobre la que más caro sale equivocarse, así que no puede pasar
+   * desapercibida entre las demás.
+   *
+   * El tinte solo no alcanza: en una paleta verde clara, cualquier fondo lo
+   * bastante marcado como para notarse deja el texto por debajo de 4.5:1. Con
+   * #D1FAE5 tres colores de texto caían a 4.42:1 y aun así apenas se
+   * distinguía del encabezado. Por eso la señal es estructural y no cromática:
+   * una barra de acento a la izquierda (4.84:1 contra la fila, imposible de no
+   * ver), una etiqueta rellena, y el tinte solo como refuerzo.
+   */
+  --color-row-self: #E7F9F0;         /* el texto más flojo queda en 4.59:1 */
+  --color-row-self-accent: #047857;  /* 4.84:1 sobre la fila */
+
+  --color-act-role-bg: #EDE9FE;
+  --color-act-role-border: #7C3AED;   /* 5.21:1 contra la peor fila */
+  --color-act-role-text: #5B21B6;     /* 7.57:1 sobre su relleno */
 
   --color-act-off-bg: #FEF3C7;
   --color-act-off-border: #B45309;    /* 4.59:1 */

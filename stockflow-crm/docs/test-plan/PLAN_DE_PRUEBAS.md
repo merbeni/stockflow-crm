@@ -525,10 +525,17 @@ todo el sistema:
 | Gris | No cambia nada, solo muestra | Pedidos (historial) |
 | Azul | Cambia datos, se puede volver atrás | Editar, + Producto |
 | Verde | Habilita o hace avanzar | Activar, Marcar como enviado |
-| Ámbar | Saca de circulación, reversible | Desactivar, Hacer operador |
+| Violeta | Cambia permisos: quién puede hacer qué | Hacer operador / Hacer administrador |
+| Ámbar | Saca de circulación, reversible | Desactivar |
 | Rojo | Destruye, no se puede deshacer | Eliminar |
 
-Tres decisiones que vale la pena justificar:
+> **Por qué el violeta tiene tono propio.** En la primera versión el cambio de rol compartía
+> el ámbar con la desactivación, y en la fila de usuarios quedaban dos botones idénticos uno
+> al lado del otro. Son cosas distintas: uno toca los **permisos** y el otro la
+> **disponibilidad** de la cuenta. El violeta no aparece en ninguna otra parte del sistema,
+> así que alcanza con verlo para saber que se está tocando quién puede hacer qué.
+
+Tres decisiones más que vale la pena justificar:
 
 - **Son botones tonales, no rellenos saturados.** Tres botones sólidos por fila convierten
   una tabla en un semáforo: si todo grita, nada resalta y el rojo deja de funcionar como
@@ -542,6 +549,7 @@ Tres decisiones que vale la pena justificar:
 |----------|----------------------:|--------------------------:|
 | Editar | 7.15:1 | 4.72:1 |
 | Activar | 6.49:1 | 4.59:1 |
+| Rol | 7.57:1 | 5.21:1 |
 | Desactivar | 6.37:1 | 4.59:1 |
 | Eliminar | 6.80:1 | 4.41:1 |
 
@@ -549,7 +557,38 @@ Tres decisiones que vale la pena justificar:
 > contrastan los botones. Se mide contra ese caso y no contra el blanco, porque de nada
 > sirve una paleta que solo cumple en la fila fácil.
 
-### 10.3 Adaptación a distintas pantallas
+### 10.3 La fila de la propia cuenta
+
+En la lista de usuarios, la fila de quien está mirando la pantalla es sobre la que más caro
+sale equivocarse, y ordenada junto al resto quedaba perdida en el medio. Ahora va **siempre
+primera** y **fijada bajo el encabezado** al recorrer la lista.
+
+El caso deja una lección de diseño que vale registrar: **el color solo no alcanzaba.**
+
+| Intento | Fondo | Peor texto encima | Se distingue del encabezado |
+|---------|-------|------------------:|----------------------------:|
+| Menta fuerte | `#D1FAE5` | 4.42:1 ❌ | 1.08:1 |
+| Menta media | `#E7F9F0` | 4.59:1 ✅ | 1.04:1 |
+| Menta clara | `#ECFDF5` | 4.76:1 ✅ | 1.00:1 |
+
+En una paleta verde clara los dos objetivos se pelean: cualquier fondo lo bastante marcado
+como para notarse deja el texto por debajo del mínimo de 4.5:1, y cualquier fondo que respete
+el texto es casi indistinguible de lo que lo rodea. **No hay un valor que resuelva las dos
+cosas.** Por eso la señal terminó siendo estructural y no cromática:
+
+| Recurso | Por qué |
+|---------|---------|
+| Barra de acento de 4 px a la izquierda | 4.84:1 contra la fila — imposible de no ver, y no compite con ningún texto |
+| Etiqueta «Tu cuenta» rellena en verde | Lo dice con palabras, no solo con color (WCAG 1.4.1) |
+| Primera posición y fijada al desplazar | No depende de la vista: siempre está donde se la busca |
+| Tinte `#E7F9F0` | Refuerzo, no el mecanismo principal |
+
+> **Verificación del fijado.** Con 25 filas de relleno y 400 px de desplazamiento, la fila
+> propia se mantuvo en la misma posición de pantalla, pegada exactamente bajo el encabezado
+> (que mide 40 px). Se comprobó midiendo en el navegador y no a ojo, porque `position:
+> sticky` falla en silencio si algún contenedor intermedio recorta el desplazamiento.
+
+### 10.4 Adaptación a distintas pantallas
 
 | Ancho | Dispositivo de referencia | Verificación | Estado |
 |-------|--------------------------|--------------|:------:|
@@ -673,7 +712,9 @@ organizaciones, escalada de privilegios, tokens falsificados y concurrencia.
 | DEF-10 | Un administrador podía **quitarse a sí mismo el rol** o desactivarse. El cambio se aplicaba, perdía el acceso al módulo «Usuarios» en el acto y no había forma de revertirlo por su cuenta | **Grave** | Uso real | ✅ Corregido — el backend lo rechaza y la interfaz no ofrece la acción sobre la propia cuenta |
 | DEF-11 | El detalle de un movimiento mostraba **«Sumada al stock»** en las líneas de factura que el usuario había omitido. El stock era correcto; el que mentía era el informe | Media | Uso real | ✅ Corregido — el esquema de la respuesta no incluía el campo `skipped` |
 | DEF-12 | La pantalla de usuarios mostraba **a la vez** un cartel verde de éxito y uno rojo de error sobre la misma acción, con la tabla desactualizada debajo | Media | Uso real | ✅ Corregido — si la recarga falla se retira el aviso de éxito |
-| DEF-13 | Las acciones de cada fila («Editar», «Desactivar», «Eliminar») eran textos del mismo peso visual: había que leerlos para saber cuál destruía datos | Baja | Revisión de usabilidad | ✅ Corregido — botones tonales con un color por tipo de acción (sección 10.3) |
+| DEF-13 | Las acciones de cada fila («Editar», «Desactivar», «Eliminar») eran textos del mismo peso visual: había que leerlos para saber cuál destruía datos | Baja | Revisión de usabilidad | ✅ Corregido — botones tonales con un color por tipo de acción (sección 10.2) |
+| DEF-14 | «Hacer operador» y «Desactivar» compartían el ámbar: dos botones idénticos, uno al lado del otro, para acciones distintas (permisos contra disponibilidad) | Baja | Uso real | ✅ Corregido — el cambio de rol tiene tono propio (violeta) |
+| DEF-15 | En la lista de usuarios, la fila de la propia cuenta quedaba mezclada con el resto y pasaba desapercibida | Baja | Uso real | ✅ Corregido — va primera, fijada bajo el encabezado, con barra de acento y etiqueta (sección 10.3) |
 
 ### 13.3 Pruebas de regresión agregadas
 
@@ -699,10 +740,10 @@ Cada defecto dejó su prueba:
 
 Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba conviene sostener:
 
-- **Ninguno de los trece apareció en las pruebas automatizadas existentes.** La suite estaba
-  en verde con los trece defectos presentes. Una suite verde prueba que no se rompió lo que
+- **Ninguno de los quince apareció en las pruebas automatizadas existentes.** La suite estaba
+  en verde con los quince defectos presentes. Una suite verde prueba que no se rompió lo que
   ya se probaba; no prueba que el sistema esté bien.
-- **Seis salieron del uso real** (DEF-01 a DEF-03, DEF-10 a DEF-12). Son problemas que
+- **Ocho salieron del uso real** (DEF-01 a DEF-03, DEF-10 a DEF-12, DEF-14 y DEF-15). Son problemas que
   ninguna aserción sobre un código HTTP puede detectar: el sistema respondía 200 y hacía
   exactamente lo programado; lo que estaba mal era lo programado.
 - **Dos salieron de atacar el sistema a propósito** (DEF-04, DEF-05). Los dos son casos que
@@ -715,7 +756,7 @@ Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba convi
 
 | Origen | Defectos | Qué tipo de problema encuentra |
 |--------|:--------:|-------------------------------|
-| Uso real por otra persona | 6 | Lo que está mal aunque funcione |
+| Uso real por otra persona | 8 | Lo que está mal aunque funcione |
 | Auditoría medida (contraste, marcado) | 4 | Lo que no se ve mirando |
 | Pruebas adversariales | 2 | Lo que nadie pensó al programar |
 | Revisión de usabilidad | 1 | Lo que cuesta más de lo necesario |
@@ -723,7 +764,7 @@ Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba convi
 
 Los orígenes encuentran cosas distintas y ninguno reemplaza a los otros. De ahí que este
 plan tenga varias capas y no una. El renglón de la suite automatizada en cero no es un
-reproche: su trabajo es que ninguno de estos trece vuelva, y para eso sí es insustituible.
+reproche: su trabajo es que ninguno de estos quince vuelva, y para eso sí es insustituible.
 
 **El uso real es, por lejos, la fuente más productiva.** Casi la mitad de los defectos
 salieron de que otra persona usara el sistema con datos propios, y son los de mayor

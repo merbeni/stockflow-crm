@@ -48,6 +48,13 @@ export default {
           border: 'var(--color-act-on-border)',
           text: 'var(--color-act-on-text)',
         },
+        'row-self': 'var(--color-row-self)',
+        'row-self-accent': 'var(--color-row-self-accent)',
+        'act-role': {
+          bg: 'var(--color-act-role-bg)',
+          border: 'var(--color-act-role-border)',
+          text: 'var(--color-act-role-text)',
+        },
         'act-off': {
           bg: 'var(--color-act-off-bg)',
           border: 'var(--color-act-off-border)',

@@ -395,7 +395,7 @@ stockflow-crm/
 | **Casos de uso** | `docs/use-cases/` | 28 casos de uso en 10 módulos, redactados en lenguaje de negocio (el *qué*, no el *cómo*). Incluye 4 diagramas UML con actores en [`docs/use-cases/diagramas/`](docs/use-cases/diagramas/). |
 | **Diagramas de flujo** | [`docs/flows/DIAGRAMAS_DE_FLUJO.md`](docs/flows/DIAGRAMAS_DE_FLUJO.md) | 12 diagramas de proceso: autenticación, facturas con IA, ABM de productos, proveedores y clientes, pedidos, usuarios y flujos integrales. |
 | **Casos de prueba** | `docs/test-cases/` | 182 casos que reflejan la suite automatizada. |
-| **Plan de pruebas** | [`docs/test-plan/PLAN_DE_PRUEBAS.md`](docs/test-plan/PLAN_DE_PRUEBAS.md) | Estrategia, técnicas de diseño, casos negativos y de límite por módulo, seguridad y aislamiento multiempresa, usabilidad (heurísticas de Nielsen), accesibilidad WCAG 2.1 AA, gestión de defectos y **registro de los 13 defectos encontrados y corregidos**. |
+| **Plan de pruebas** | [`docs/test-plan/PLAN_DE_PRUEBAS.md`](docs/test-plan/PLAN_DE_PRUEBAS.md) | Estrategia, técnicas de diseño, casos negativos y de límite por módulo, seguridad y aislamiento multiempresa, usabilidad (heurísticas de Nielsen), accesibilidad WCAG 2.1 AA, gestión de defectos y **registro de los 15 defectos encontrados y corregidos**. |
 | **Manual de usuario** | `docs/user-manual/` | Manual funcional (v2.0). Describe **cómo operar** el sistema; la lógica de los procesos vive en los diagramas de flujo. |
 
 ---

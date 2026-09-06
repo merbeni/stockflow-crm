@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
 import ActionButton from '../components/ui/ActionButton'
@@ -139,6 +139,15 @@ export default function Users() {
   // las acciones que dejarían a la organización sin ningún administrador.
   const adminsActivos = usuarios.filter((u) => u.role === 'admin' && u.is_active).length
 
+  // Tu propia cuenta va siempre primera. Es sobre la que más caro sale
+  // equivocarse y, mezclada por orden alfabético en una lista larga, quedaba
+  // perdida entre las demás. El resto conserva el orden que manda el servidor.
+  const ordenados = useMemo(() => {
+    const propia = usuarios.filter((u) => u.id === usuarioActual?.id)
+    const resto = usuarios.filter((u) => u.id !== usuarioActual?.id)
+    return [...propia, ...resto]
+  }, [usuarios, usuarioActual])
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -170,25 +179,32 @@ export default function Users() {
         <p className="text-sm text-tx-muted">Cargando…</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-brand-border bg-surface shadow">
-          <div className="overflow-x-auto">
+          {/* La altura máxima es lo que convierte a este contenedor en área de
+              desplazamiento, y sin eso `sticky` no tendría contra qué fijarse.
+              Con pocos usuarios no scrollea y no se nota; con muchos, el
+              encabezado y tu propia cuenta quedan siempre a la vista. */}
+          <div className="max-h-[70vh] overflow-auto">
             <table className="w-full min-w-[640px] text-sm">
-              <thead className="border-b border-brand-border bg-sidebar text-xs uppercase tracking-wide text-tx-muted">
+              <thead className="text-xs uppercase tracking-wide text-tx-muted">
                 <tr>
                   {['Nombre', 'Correo', 'Teléfono', 'Rol', 'Estado', ''].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left font-medium">
+                    <th
+                      key={h}
+                      className="sticky top-0 z-20 h-10 border-b border-brand-border bg-sidebar px-4 text-left font-medium"
+                    >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {usuarios.map((u) => {
+                {ordenados.map((u) => {
                   const esUnoMismo = u.id === usuarioActual?.id
                   const esAdminActivo = u.role === 'admin' && u.is_active
                   // Dos motivos distintos para no ofrecer «Hacer operador» ni
                   // «Desactivar» sobre esta fila. El backend rechaza los dos;
                   // acá se evita que el botón siquiera aparezca.
-                  const bloqueo = esAdminActivo && esUnoMismo
+                  const bloqueo = esUnoMismo
                     ? 'No podés quitarte el rol de administrador ni desactivar tu propia ' +
                       'cuenta: perderías el acceso a esta pantalla y no podrías deshacerlo. ' +
                       'Pedile a otro administrador que lo haga.'
@@ -197,17 +213,36 @@ export default function Users() {
                         'activo. Asigná el rol de administrador a otra persona para poder ' +
                         'cambiar o desactivar esta cuenta.'
                       : null
+
+                  // Tu propia fila queda fijada bajo el encabezado (que mide
+                  // 2.5rem) para no perderla de vista al recorrer la lista.
+                  const celdaPropia = esUnoMismo
+                    ? 'sticky top-10 z-10 bg-row-self'
+                    : ''
                   return (
-                    <tr key={u.id} className={u.is_active ? '' : 'bg-gray-50 opacity-60'}>
-                      <td className="px-4 py-3 font-medium text-tx-primary">
+                    <tr
+                      key={u.id}
+                      className={
+                        esUnoMismo ? '' : u.is_active ? '' : 'bg-gray-50 opacity-60'
+                      }
+                    >
+                      <td
+                        className={`px-4 py-3 font-medium text-tx-primary ${celdaPropia} ${
+                          esUnoMismo ? 'border-l-4 border-row-self-accent' : ''
+                        }`}
+                      >
                         {u.full_name ?? '—'}
                         {esUnoMismo && (
-                          <span className="ml-2 text-xs font-normal text-tx-muted">(vos)</span>
+                          <span className="ml-2 inline-flex items-center rounded-full bg-row-self-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                            Tu cuenta
+                          </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-tx-secondary">{u.email}</td>
-                      <td className="px-4 py-3 text-tx-secondary">{u.phone ?? '—'}</td>
-                      <td className="px-4 py-3">
+                      <td className={`px-4 py-3 text-tx-secondary ${celdaPropia}`}>{u.email}</td>
+                      <td className={`px-4 py-3 text-tx-secondary ${celdaPropia}`}>
+                        {u.phone ?? '—'}
+                      </td>
+                      <td className={`px-4 py-3 ${celdaPropia}`}>
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             u.role === 'admin'
@@ -218,7 +253,7 @@ export default function Users() {
                           {ROLES[u.role]}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs">
+                      <td className={`px-4 py-3 text-xs ${celdaPropia}`}>
                         {!u.is_active ? (
                           <span className="text-tx-muted">Desactivado</span>
                         ) : u.is_email_verified ? (
@@ -227,19 +262,21 @@ export default function Users() {
                           <span className="text-warning">Falta verificar el correo</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`px-4 py-3 text-right ${celdaPropia}`}>
                         <div className="flex flex-wrap justify-end gap-2">
                           {bloqueo ? (
                             <span
                               className="cursor-help text-xs italic text-tx-muted"
                               title={bloqueo}
                             >
-                              {esUnoMismo ? 'Tu propia cuenta' : 'Único administrador'}
+                              {esUnoMismo
+                                ? 'Solo otro administrador puede cambiarla'
+                                : 'Único administrador'}
                             </span>
                           ) : (
                             <>
                               <ActionButton
-                                tono={u.role === 'admin' ? 'desactivar' : 'activar'}
+                                tono="rol"
                                 onClick={() =>
                                   cambiar(
                                     u,

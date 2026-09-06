@@ -5,11 +5,16 @@
  * leerlos para saber cuál borraba. Ahora cada verbo tiene su color, y el color
  * significa siempre lo mismo en todo el sistema:
  *
- *   consultar  → gris   · no cambia nada, solo muestra información
- *   editar     → azul   · cambia datos, se puede volver atrás
- *   activar    → verde  · devuelve algo al uso
- *   desactivar → ámbar  · lo saca de circulación, es reversible
- *   eliminar   → rojo   · destruye, no se puede deshacer
+ *   consultar  → gris    · no cambia nada, solo muestra información
+ *   editar     → azul    · cambia datos, se puede volver atrás
+ *   activar    → verde   · devuelve algo al uso
+ *   rol        → violeta · cambia permisos: quién puede hacer qué
+ *   desactivar → ámbar   · lo saca de circulación, es reversible
+ *   eliminar   → rojo    · destruye, no se puede deshacer
+ *
+ * El violeta tiene tono propio porque cambiar el rol y desactivar la cuenta son
+ * cosas distintas —permisos contra disponibilidad— y compartiendo el ámbar
+ * quedaban dos botones idénticos uno al lado del otro en la fila de usuarios.
  *
  * El gris de «consultar» no es falta de criterio: es la ausencia de riesgo. Si
  * todas las acciones tuvieran un color fuerte, ninguno destacaría y el rojo
@@ -23,6 +28,7 @@ const TONOS = {
   consultar: 'border-gray-300 bg-gray-50 text-tx-secondary',
   editar: 'border-act-edit-border bg-act-edit-bg text-act-edit-text',
   activar: 'border-act-on-border bg-act-on-bg text-act-on-text',
+  rol: 'border-act-role-border bg-act-role-bg text-act-role-text',
   desactivar: 'border-act-off-border bg-act-off-bg text-act-off-text',
   eliminar: 'border-act-del-border bg-act-del-bg text-act-del-text',
 }
