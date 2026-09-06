@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#046C4E"/>
+  <!-- Tres cajas apiladas: el stock, que es de lo que trata la aplicación. -->
+  <rect x="8"  y="17" width="7" height="7" rx="1.5" fill="#FFFFFF"/>
+  <rect x="17" y="17" width="7" height="7" rx="1.5" fill="#FFFFFF"/>
+  <rect x="12.5" y="8" width="7" height="7" rx="1.5" fill="#A7F3D0"/>
+</svg>
