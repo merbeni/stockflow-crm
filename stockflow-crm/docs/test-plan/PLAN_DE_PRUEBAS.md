@@ -72,7 +72,7 @@ son las que encuentran los problemas que las otras no ven.
                   ├───────────────────────────────┤
                   │  UX, accesibilidad, contraste │  ← calidad percibida
                   ├───────────────────────────────┤
-                  │  Integración de la API (HTTP) │  ← 193 pruebas automatizadas
+                  │  Integración de la API (HTTP) │  ← 198 pruebas automatizadas
                   ├───────────────────────────────┤
                   │  Unitarias front y componentes│  ← 45 pruebas automatizadas
                   └───────────────────────────────┘
@@ -157,21 +157,21 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 
 | Suite | Archivos | Casos | Resultado |
 |-------|----------|-------|-----------|
-| Backend (pytest) | 8 | 193 | ✅ Todos en verde |
+| Backend (pytest) | 8 | 198 | ✅ Todos en verde |
 | Frontend (Vitest) | 7 | 45 | ✅ Todos en verde |
-| **Total** | **15** | **238** | ✅ |
+| **Total** | **15** | **243** | ✅ |
 
 ### 7.1 Desglose del backend por módulo
 
 | Archivo | Casos | Foco |
 |---------|-------|------|
-| `test_auth.py` | 31 | Alta, verificación de correo, login, sesión, roles |
+| `test_auth.py` | 35 | Alta, verificación de correo, login, sesión, roles |
 | `test_products.py` | 36 | ABM, SKU único, stock decimal, límites numéricos, borrado |
 | `test_invoices.py` | 34 | Procesamiento, confirmación, rechazo, alta desde factura |
 | `test_orders.py` | 26 | Líneas, máquina de estados, stock insuficiente, correo |
 | `test_customers.py` | 22 | ABM, historial, borrado con pedidos |
 | `test_suppliers.py` | 18 | ABM, validaciones de contacto, aislamiento |
-| `test_stock_movements.py` | 18 | Registro automático, trazabilidad, filtros |
+| `test_stock_movements.py` | 19 | Registro automático, trazabilidad, filtros |
 | `test_security.py` | 8 | Hash de contraseñas y firma de tokens |
 
 ### 7.2 Desglose del frontend
