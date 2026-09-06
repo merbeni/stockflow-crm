@@ -113,7 +113,10 @@ export default function Layout() {
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="absolute left-0 top-0 z-50 flex h-full w-64 flex-col border-r border-brand-border bg-sidebar">
+          <aside
+            id="menu-lateral"
+            className="absolute left-0 top-0 z-50 flex h-full w-64 flex-col border-r border-brand-border bg-sidebar"
+          >
             <SidebarContent {...sidebarProps} onClose={() => setOpen(false)} />
           </aside>
         </div>
@@ -124,10 +127,15 @@ export default function Layout() {
         {/* Barra superior en móvil */}
         <header className="flex shrink-0 items-center justify-between border-b border-brand-border bg-sidebar px-4 py-3 md:hidden">
           <span className="text-base font-bold text-primary-text">StockFlow</span>
+          {/* `aria-expanded` es lo que le dice a un lector de pantalla si el
+              menú está abierto o cerrado. Sin él, el botón se anuncia igual en
+              los dos estados y no hay forma de saber qué pasó al pulsarlo. */}
           <button
             onClick={() => setOpen(true)}
             className="rounded-md p-1 text-tx-secondary hover:bg-brand-border"
-            aria-label="Abrir menú"
+            aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={open}
+            aria-controls="menu-lateral"
           >
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />

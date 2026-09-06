@@ -37,7 +37,7 @@ def _validar_rango(date_from: datetime | None, date_to: datetime | None) -> None
     """
     if date_from and date_to and date_from > date_to:
         raise DomainError(
-            'La fecha "desde" no puede ser posterior a la fecha "hasta". '
+            'La fecha «desde» no puede ser posterior a la fecha «hasta». '
             "Corregí el rango e intentá de nuevo.",
             field="date_from",
         )
@@ -49,7 +49,7 @@ def _validar_rango(date_from: datetime | None, date_to: datetime | None) -> None
         referencia = date_from if date_from.tzinfo else date_from.replace(tzinfo=timezone.utc)
         if referencia > datetime.now(timezone.utc) + _MARGEN_FUTURO:
             raise DomainError(
-                'La fecha "desde" no puede estar en el futuro: los movimientos '
+                'La fecha «desde» no puede estar en el futuro: los movimientos '
                 "de stock son hechos ya ocurridos.",
                 field="date_from",
             )

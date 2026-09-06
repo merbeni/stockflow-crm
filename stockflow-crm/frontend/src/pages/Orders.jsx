@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
 import Badge from '../components/ui/Badge'
@@ -272,6 +273,19 @@ export default function Orders() {
         <Modal title="Nuevo pedido" onClose={() => setCreateModal(false)}>
           <form onSubmit={handleCreate} noValidate className="space-y-3">
             <ErrorBanner message={createError} />
+            {/* Sin clientes cargados el desplegable queda vacío y «Crear»
+                deshabilitado: era un callejón sin salida que no explicaba nada.
+                Hay que decir qué falta y dónde se resuelve. */}
+            {customers.length === 0 && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Todavía no tenés clientes cargados y un pedido siempre es de
+                alguien. Creá el primero en{' '}
+                <Link to="/customers" className="font-medium underline">
+                  Clientes
+                </Link>{' '}
+                y volvé acá.
+              </p>
+            )}
             <FormField name="customer_id" label="Cliente" required>
               <select
                 id="campo-customer_id"
@@ -317,6 +331,19 @@ export default function Orders() {
         >
           <form onSubmit={handleAddItem} noValidate className="space-y-3">
             <ErrorBanner message={itemError} />
+
+            {/* Mismo criterio que en el alta: si no hay nada para elegir, hay
+                que decir qué falta en lugar de mostrar un desplegable vacío.
+                Se cuentan solo los activos, que son los que se ofrecen. */}
+            {products.filter((p) => p.is_active).length === 0 && (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                No hay productos activos para agregar. Cargá o reactivá alguno en{' '}
+                <Link to="/products" className="font-medium underline">
+                  Productos
+                </Link>
+                .
+              </p>
+            )}
 
             <FormField
               name="product_id"

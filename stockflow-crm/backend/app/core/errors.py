@@ -141,6 +141,18 @@ def _translate(error: dict) -> str:
         if places == 0:
             return "Debe ser un número entero."
         return f"No puede tener más de {places} decimales."
+    # Los dos casos de abajo aparecen cuando el número excede lo que entra en la
+    # columna. Sin traducirlos caían en el mensaje genérico «El valor ingresado
+    # no es válido», que no le dice a nadie cuál es el tope: hay que nombrarlo.
+    if err_type == "decimal_whole_digits":
+        enteros = ctx.get("whole_digits")
+        return (
+            f"El número es demasiado grande: admite hasta {enteros} dígitos "
+            "antes de la coma."
+        )
+    if err_type == "decimal_max_digits":
+        total = ctx.get("max_digits")
+        return f"El número es demasiado grande: admite hasta {total} dígitos en total."
     if err_type in (
         "int_parsing",
         "int_type",

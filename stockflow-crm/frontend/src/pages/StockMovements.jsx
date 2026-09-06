@@ -24,7 +24,13 @@ export default function StockMovements() {
   const rangoInvertido = Boolean(dateFrom && dateTo && dateFrom > dateTo)
 
   async function load() {
-    if (rangoInvertido) return
+    if (rangoInvertido) {
+      // El aviso del rango invertido se muestra aparte. Si además quedaba un
+      // error del servidor de la consulta anterior, se apilaban dos carteles
+      // rojos diciendo cosas distintas sobre el mismo filtro.
+      setError('')
+      return
+    }
     setLoading(true)
     const params = {}
     if (typeFilter) params.type = typeFilter

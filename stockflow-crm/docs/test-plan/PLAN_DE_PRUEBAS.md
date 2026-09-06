@@ -68,13 +68,15 @@ son las que encuentran los problemas que las otras no ven.
 
 ```
                   ┌───────────────────────────────┐
-                  │  Exploratorias / adversariales│  ← buscan romper el sistema
+                  │  Exploratorias en el navegador│  ← teclado, foco, archivos
+                  ├───────────────────────────────┤
+                  │  Adversariales contra la API  │  ← buscan romper el sistema
                   ├───────────────────────────────┤
                   │  UX, accesibilidad, contraste │  ← calidad percibida
                   ├───────────────────────────────┤
-                  │  Integración de la API (HTTP) │  ← 198 pruebas automatizadas
+                  │  Integración de la API (HTTP) │  ← 199 pruebas automatizadas
                   ├───────────────────────────────┤
-                  │  Unitarias front y componentes│  ← 45 pruebas automatizadas
+                  │  Unitarias front y componentes│  ← 47 pruebas automatizadas
                   └───────────────────────────────┘
 ```
 
@@ -84,7 +86,20 @@ son las que encuentran los problemas que las otras no ven.
 | Integración (backend) | pytest + TestClient + SQLite en memoria | Cada endpoint de punta a punta, con base real por prueba | En cada cambio |
 | Sistema | Ejecución manual sobre el entorno desplegado | Flujos completos entre módulos | Antes de cada despliegue |
 | Adversarial | Script propio contra la API | Inyección, límites, aislamiento, concurrencia | Antes de cada entrega |
+| Exploratorio de interfaz | Navegador controlado (Chrome DevTools) | Teclado real, foco, estados, callejones sin salida | Antes de cada entrega |
 | UX / accesibilidad | Inspección guiada por heurísticas + cálculo de contraste | Comprensibilidad y accesibilidad | Ante cambios de interfaz |
+
+### 3.0 Por qué hay una capa que opera el navegador
+
+Las pruebas de integración hablan HTTP: arman un cuerpo JSON y miran el código de respuesta.
+Nunca escriben en un campo, nunca mueven el foco y nunca abren una ventana. Hay una clase
+entera de defectos que solo existen ahí, y no son menores: **el más grave del proyecto
+(DEF-16) hacía que en todos los formularios entrara una sola letra por campo**, con las 243
+pruebas de entonces en verde.
+
+Por eso esta capa maneja un navegador real: teclea tecla por tecla, verifica dónde quedó el
+foco, sube archivos, aprieta Escape y mide el ancho del documento. Es la única forma de
+probar lo que la persona toca de verdad.
 
 ### 3.1 Por qué la base de pruebas se recrea en cada caso
 
@@ -157,16 +172,16 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 
 | Suite | Archivos | Casos | Resultado |
 |-------|----------|-------|-----------|
-| Backend (pytest) | 8 | 198 | ✅ Todos en verde |
-| Frontend (Vitest) | 7 | 45 | ✅ Todos en verde |
-| **Total** | **15** | **243** | ✅ |
+| Backend (pytest) | 8 | 199 | ✅ Todos en verde |
+| Frontend (Vitest) | 7 | 47 | ✅ Todos en verde |
+| **Total** | **15** | **246** | ✅ |
 
 ### 7.1 Desglose del backend por módulo
 
 | Archivo | Casos | Foco |
 |---------|-------|------|
 | `test_auth.py` | 35 | Alta, verificación de correo, login, sesión, roles |
-| `test_products.py` | 36 | ABM, SKU único, stock decimal, límites numéricos, borrado |
+| `test_products.py` | 37 | ABM, SKU único, stock decimal, límites numéricos, borrado |
 | `test_invoices.py` | 34 | Procesamiento, confirmación, rechazo, alta desde factura |
 | `test_orders.py` | 26 | Líneas, máquina de estados, stock insuficiente, correo |
 | `test_customers.py` | 22 | ABM, historial, borrado con pedidos |
@@ -178,7 +193,7 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 
 | Archivo | Casos | Foco |
 |---------|-------|------|
-| `ui/Modal.test.jsx` | 11 | Comportamiento y **accesibilidad** del diálogo |
+| `ui/Modal.test.jsx` | 13 | Comportamiento y **accesibilidad** del diálogo |
 | `ui/Badge.test.jsx` | 10 | Indicadores de estado y de confianza de la IA |
 | `context/AuthContext.test.jsx` | 7 | Sesión, persistencia del token, cierre de sesión |
 | `api/errors.test.js` | 9 | Traducción de errores del backend a mensajes de campo |
@@ -615,8 +630,10 @@ La accesibilidad se verifica con criterios medibles, no por impresión visual.
 | ACC-08 | 3.3.1 Identificación de errores | El error se identifica en texto y se anuncia | `role="alert"` junto al campo | ✅ |
 | ACC-09 | 3.3.2 Etiquetas e instrucciones | Toda etiqueta está **asociada** a su campo | `htmlFor` / `id` en todos los campos | ✅ |
 | ACC-10 | 2.4.3 Orden del foco | Al abrir un diálogo el foco entra; al cerrarlo vuelve | Sin saltos al inicio del documento | ✅ |
-| ACC-11 | 1.4.10 Reajuste | Sin desplazamiento horizontal a 320 px | Contenido en una columna | ✋ |
-| ACC-12 | 1.4.4 Cambio de tamaño del texto | Legible al 200 % de zoom | Sin texto cortado | ✋ |
+| ACC-11 | 1.4.10 Reajuste | Sin desplazamiento horizontal en pantalla angosta; las tablas se recorren solas | La página no scrollea de costado | ✅ |
+| ACC-12 | 4.1.2 Estado de un control | El botón del menú informa si está abierto (`aria-expanded`) | Etiqueta y estado coherentes | ✅ |
+| ACC-13 | 1.4.4 Cambio de tamaño del texto | Legible al 200 % de zoom | Sin texto cortado | ✋ |
+| ACC-14 | 2.1.1 Teclado — motivo de un control deshabilitado | El motivo por el que «Eliminar» está bloqueado viaja en `title`: un lector de pantalla lo anuncia, pero quien navega con teclado sin lector no puede alcanzarlo, porque un botón deshabilitado no recibe foco | Motivo visible sin depender del mouse | ⚠️ Conocido, pendiente |
 
 > **ACC-09 no es un tecnicismo.** Una etiqueta que solo está *al lado* del campo se ve bien
 > pero no está conectada con él: un lector de pantalla anuncia «campo de texto, en blanco» sin
@@ -715,6 +732,14 @@ organizaciones, escalada de privilegios, tokens falsificados y concurrencia.
 | DEF-13 | Las acciones de cada fila («Editar», «Desactivar», «Eliminar») eran textos del mismo peso visual: había que leerlos para saber cuál destruía datos | Baja | Revisión de usabilidad | ✅ Corregido — botones tonales con un color por tipo de acción (sección 10.2) |
 | DEF-14 | «Hacer operador» y «Desactivar» compartían el ámbar: dos botones idénticos, uno al lado del otro, para acciones distintas (permisos contra disponibilidad) | Baja | Uso real | ✅ Corregido — el cambio de rol tiene tono propio (violeta) |
 | DEF-15 | En la lista de usuarios, la fila de la propia cuenta quedaba mezclada con el resto y pasaba desapercibida | Baja | Uso real | ✅ Corregido — va primera, fijada bajo el encabezado, con barra de acento y etiqueta (sección 10.3) |
+| DEF-16 | **Solo entraba la primera letra de cada campo dentro de un modal.** El efecto que maneja el foco dependía de `onClose`, que llega como función anónima y cambia en cada render: con cada tecla el efecto se reejecutaba y `focus()` le sacaba el cursor al campo. Afectaba a **todos** los formularios del sistema | **Crítica** | Pruebas exploratorias con navegador | ✅ Corregido — el foco se maneja una sola vez y la tecla Escape lee los valores por referencia |
+| DEF-17 | Un importe fuera de rango respondía «El valor ingresado no es válido», sin decir cuál era el tope. La persona quedaba probando números hasta acertar | Media | Pruebas exploratorias | ✅ Corregido — el mensaje nombra el límite (`decimal_max_digits` y `decimal_whole_digits` no estaban traducidos) |
+| DEF-18 | El login era el **único** formulario sin validación de cliente: el formulario vacío viajaba al servidor y volvía con un mensaje que solo hablaba del correo, sin marcar ningún campo | Media | Pruebas exploratorias | ✅ Corregido — valida antes de enviar y marca los campos |
+| DEF-19 | Al vencer la sesión, la persona era expulsada al login **sin ninguna explicación**: veía desaparecer su pantalla sin saber si se había roto algo | Media | Pruebas exploratorias | ✅ Corregido — el login avisa que la sesión se cerró |
+| DEF-20 | «Nuevo pedido» sin clientes cargados mostraba un desplegable vacío y un botón deshabilitado, sin decir qué faltaba. Ídem «+ Producto» sin productos activos | Media | Pruebas exploratorias | ✅ Corregido — se explica qué falta y se enlaza a la pantalla donde se resuelve |
+| DEF-21 | En Movimientos, un rango de fechas inválido dejaba en pantalla el error anterior del servidor junto al nuevo: dos carteles rojos diciendo cosas distintas | Baja | Pruebas exploratorias | ✅ Corregido — se limpia el error previo al cortar la consulta |
+| DEF-22 | El botón «Reenviarme el correo de verificación» no se deshabilitaba mientras enviaba: admitía pulsaciones repetidas | Baja | Pruebas exploratorias | ✅ Corregido |
+| DEF-23 | El botón del menú en móvil no informaba `aria-expanded` y su etiqueta seguía diciendo «Abrir menú» con el menú ya abierto | Baja | Pruebas exploratorias | ✅ Corregido |
 
 ### 13.3 Pruebas de regresión agregadas
 
@@ -730,6 +755,8 @@ Cada defecto dejó su prueba:
 | DEF-09 | `se_cierra_con_la_tecla_Escape`, `ignora_Escape_mientras_hay_una_operación_en_curso`, `se_anuncia_como_diálogo_y_toma_el_título_como_nombre_accesible`, `el_botón_de_cerrar_tiene_nombre_accesible`, `lleva_el_foco_adentro_de_la_ventana_al_abrirse` |
 | DEF-10 | `test_un_admin_no_puede_quitarse_el_rol_aunque_haya_otro_admin`, `test_un_admin_no_puede_desactivar_su_propia_cuenta`, `test_el_bloqueo_solo_aplica_si_realmente_se_degrada`, `test_otro_admin_si_puede_degradar_a_un_companero` |
 | DEF-11 | `test_el_detalle_marca_las_lineas_omitidas_de_la_factura` |
+| DEF-16 | `deja_escribir_más_de_un_carácter_en_un_campo_controlado`, `no_le_roba_el_foco_al_campo_mientras_se_escribe` |
+| DEF-17 | `test_el_mensaje_del_limite_dice_cual_es_el_limite` |
 
 > **DEF-03, DEF-07 y DEF-08 no tienen prueba automatizada.** Son propiedades del marcado
 > —que un campo tenga su etiqueta asociada, que exista una regla de foco— que se verifican
@@ -740,8 +767,8 @@ Cada defecto dejó su prueba:
 
 Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba conviene sostener:
 
-- **Ninguno de los quince apareció en las pruebas automatizadas existentes.** La suite estaba
-  en verde con los quince defectos presentes. Una suite verde prueba que no se rompió lo que
+- **Ninguno de los veintitrés apareció en las pruebas automatizadas existentes.** La suite estaba
+  en verde con los veintitrés defectos presentes. Una suite verde prueba que no se rompió lo que
   ya se probaba; no prueba que el sistema esté bien.
 - **Ocho salieron del uso real** (DEF-01 a DEF-03, DEF-10 a DEF-12, DEF-14 y DEF-15). Son problemas que
   ninguna aserción sobre un código HTTP puede detectar: el sistema respondía 200 y hacía
@@ -756,15 +783,23 @@ Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba convi
 
 | Origen | Defectos | Qué tipo de problema encuentra |
 |--------|:--------:|-------------------------------|
-| Uso real por otra persona | 8 | Lo que está mal aunque funcione |
+| Pruebas exploratorias con navegador | 8 | Lo que solo aparece al operar la interfaz de verdad |
+| Uso real por otra persona | 6 | Lo que está mal aunque funcione |
 | Auditoría medida (contraste, marcado) | 4 | Lo que no se ve mirando |
-| Pruebas adversariales | 2 | Lo que nadie pensó al programar |
+| Pruebas adversariales sobre la API | 2 | Lo que nadie pensó al programar |
 | Revisión de usabilidad | 1 | Lo que cuesta más de lo necesario |
 | Suite automatizada | 0 | Lo que ya se había roto antes |
 
+> **El defecto más grave del proyecto (DEF-16) lo encontró la interfaz, no la API.** Un
+> arreglo de accesibilidad del modal dejó, sin que nadie lo notara, que en **todos** los
+> formularios del sistema entrara una sola letra por campo. Las 243 pruebas que había entonces seguían en verde:
+> ninguna escribía más de un carácter dentro de un modal. Es el ejemplo más claro de por qué
+> una capa de pruebas sobre la interfaz real no es opcional, y de por qué toda corrección
+> necesita su prueba —incluidas las que parecen inofensivas—.
+
 Los orígenes encuentran cosas distintas y ninguno reemplaza a los otros. De ahí que este
 plan tenga varias capas y no una. El renglón de la suite automatizada en cero no es un
-reproche: su trabajo es que ninguno de estos quince vuelva, y para eso sí es insustituible.
+reproche: su trabajo es que ninguno de estos veintitrés vuelva, y para eso sí es insustituible.
 
 **El uso real es, por lejos, la fuente más productiva.** Casi la mitad de los defectos
 salieron de que otra persona usara el sistema con datos propios, y son los de mayor

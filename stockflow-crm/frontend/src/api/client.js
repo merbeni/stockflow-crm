@@ -20,6 +20,9 @@ client.interceptors.request.use((config) => {
   return config
 })
 
+/** Marca que la sesión se cortó sola, para que el login pueda explicarlo. */
+export const CLAVE_SESION_EXPIRADA = 'sesion-expirada'
+
 // Ante un 401 se limpia el token para que PrivateRoute redirija al login.
 client.interceptors.response.use(
   (res) => res,
@@ -29,6 +32,10 @@ client.interceptors.response.use(
       // Sin esta condición, un login con contraseña incorrecta recargaba la
       // página y el usuario nunca llegaba a ver el mensaje de error.
       if (!enRutaPublica()) {
+        // Antes se caía al login sin ninguna explicación: quien estaba
+        // trabajando veía desaparecer la pantalla y no sabía si se había roto
+        // algo o si había hecho algo mal.
+        sessionStorage.setItem(CLAVE_SESION_EXPIRADA, '1')
         window.location.href = '/login'
       }
     }

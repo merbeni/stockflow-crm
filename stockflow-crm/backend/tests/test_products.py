@@ -109,6 +109,28 @@ class TestValidacionesDeProducto:
         assert resp.status_code == 422, "no debe llegar a la base ni dar 500"
         assert "price" in resp.json()["errors"]
 
+    def test_el_mensaje_del_limite_dice_cual_es_el_limite(self, client, auth_headers):
+        """
+        Rechazar no alcanza: hay que decir hasta dónde se puede llegar.
+
+        Estos dos casos caían en el mensaje genérico «El valor ingresado no es
+        válido», que deja a la persona probando números hasta acertar.
+        """
+        demasiados_digitos = client.post("/products", json={
+            "sku": "LIM-1", "name": "Producto", "price": "99999999999999",
+        }, headers=auth_headers)
+        assert demasiados_digitos.status_code == 422
+        mensaje = demasiados_digitos.json()["errors"]["price"]
+        assert "10" in mensaje, f"tiene que nombrar el tope; llegó: {mensaje!r}"
+        assert "no es válido" not in mensaje, "no puede caer en el mensaje genérico"
+
+        parte_entera = client.post("/products", json={
+            "sku": "LIM-2", "name": "Producto", "price": "123456789.00",
+        }, headers=auth_headers)
+        assert parte_entera.status_code == 422
+        mensaje = parte_entera.json()["errors"]["price"]
+        assert "8" in mensaje and "coma" in mensaje, f"llegó: {mensaje!r}"
+
     def test_stock_desmedido_da_422(self, client, auth_headers):
         resp = client.post("/products", json={
             "sku": "ENORME-2", "name": "Producto", "price": "1.00",

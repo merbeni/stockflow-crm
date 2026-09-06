@@ -1,32 +1,76 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import client from '../api/client'
-import { getErrorMessage } from '../api/errors'
+import client, { CLAVE_SESION_EXPIRADA } from '../api/client'
+import { getErrorMessage, getFieldErrors } from '../api/errors'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
 import { useAuth } from '../context/AuthContext'
+import {
+  email as validarEmail,
+  requerido,
+  validarFormulario,
+} from '../utils/validation'
+
+// La contraseña acá solo tiene que estar: las reglas de fortaleza son del alta.
+// Exigirlas al ingresar delataría el formato de las contraseñas guardadas y
+// dejaría afuera a quien tenga una anterior a la regla actual.
+const REGLAS = {
+  email: validarEmail,
+  password: requerido,
+}
 
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [errores, setErrores] = useState({})
   const [error, setError] = useState('')
   const [aviso, setAviso] = useState('')
   const [necesitaVerificar, setNecesitaVerificar] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [reenviando, setReenviando] = useState(false)
+  const [sesionExpirada, setSesionExpirada] = useState(false)
+
+  useEffect(() => {
+    // Lo deja puesto el interceptor del cliente HTTP cuando corta una sesión.
+    if (sessionStorage.getItem(CLAVE_SESION_EXPIRADA)) {
+      sessionStorage.removeItem(CLAVE_SESION_EXPIRADA)
+      setSesionExpirada(true)
+    }
+  }, [])
+
+  function actualizar(campo, valor) {
+    if (campo === 'email') setEmail(valor)
+    else setPassword(valor)
+    // Solo se revalida lo que ya estaba marcado: avisar mientras se escribe por
+    // primera vez es molestar antes de tiempo.
+    if (errores[campo]) {
+      setErrores((e) => ({ ...e, [campo]: REGLAS[campo](valor) }))
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
     setAviso('')
+    setSesionExpirada(false)
     setNecesitaVerificar(false)
+
+    // Antes no había ninguna comprobación acá: el formulario vacío viajaba al
+    // servidor y volvía con un mensaje que solo hablaba del correo, aunque la
+    // contraseña también faltara, y sin marcar ningún campo.
+    const encontrados = validarFormulario({ email, password }, REGLAS)
+    setErrores(encontrados)
+    if (Object.keys(encontrados).length > 0) return
+
     setLoading(true)
     try {
       await login(email, password)
       navigate('/')
     } catch (err) {
       setError(getErrorMessage(err, 'No pudimos iniciar sesión.'))
+      setErrores((previos) => ({ ...previos, ...getFieldErrors(err) }))
       // El backend responde 403 cuando la cuenta existe pero falta verificar
       // el correo: en ese caso ofrecemos reenviar el enlace.
       if (err.response?.status === 403) setNecesitaVerificar(true)
@@ -37,12 +81,15 @@ export default function Login() {
 
   async function reenviarVerificacion() {
     setError('')
+    setReenviando(true)
     try {
       const { data } = await client.post('/auth/resend-verification', { email })
       setAviso(data.message)
       setNecesitaVerificar(false)
     } catch (err) {
       setError(getErrorMessage(err, 'No pudimos reenviar el correo.'))
+    } finally {
+      setReenviando(false)
     }
   }
 
@@ -51,6 +98,13 @@ export default function Login() {
       <div className="w-full max-w-sm rounded-2xl border border-brand-border bg-surface p-8 shadow">
         <h1 className="mb-1 text-2xl font-bold text-tx-primary">StockFlow CRM</h1>
         <p className="mb-6 text-sm text-tx-muted">Ingresá a tu cuenta</p>
+
+        {sesionExpirada && (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Tu sesión se cerró por inactividad. Ingresá de nuevo para seguir
+            donde estabas.
+          </p>
+        )}
 
         <ErrorBanner message={error} className="mb-4" onDismiss={() => setError('')} />
 
@@ -64,20 +118,23 @@ export default function Login() {
           <button
             type="button"
             onClick={reenviarVerificacion}
-            className="mb-4 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 hover:bg-amber-100"
+            disabled={reenviando}
+            className="mb-4 w-full rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 hover:bg-amber-100 disabled:opacity-60"
           >
-            Reenviarme el correo de verificación
+            {reenviando ? 'Enviando…' : 'Reenviarme el correo de verificación'}
           </button>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <FormField
             name="email"
             label="Correo electrónico"
             type="email"
             required
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            error={errores.email}
+            onChange={(e) => actualizar('email', e.target.value)}
+            onBlur={() => setErrores((x) => ({ ...x, email: REGLAS.email(email) }))}
             disabled={loading}
           />
           <FormField
@@ -86,7 +143,8 @@ export default function Login() {
             type="password"
             required
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            error={errores.password}
+            onChange={(e) => actualizar('password', e.target.value)}
             disabled={loading}
           />
           <button

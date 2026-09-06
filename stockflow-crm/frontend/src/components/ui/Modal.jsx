@@ -26,25 +26,42 @@ export default function Modal({ title, onClose, children, disabled = false }) {
   const idTitulo = useId()
   const contenedor = useRef(null)
 
+  // `onClose` suele llegar como función anónima («onClose={() => setModal(null)}»),
+  // así que es distinta en cada render. Guardarla en una referencia permite que
+  // los efectos de abajo no dependan de ella y se ejecuten una sola vez.
+  const alCerrar = useRef(onClose)
+  const bloqueado = useRef(disabled)
+  useEffect(() => {
+    alCerrar.current = onClose
+    bloqueado.current = disabled
+  })
+
+  /**
+   * Foco: entra al abrir, vuelve a su lugar al cerrar.
+   *
+   * Este efecto tiene que correr **una sola vez**. Cuando dependía de `onClose`
+   * volvía a ejecutarse en cada render —o sea, con cada tecla— y `focus()` le
+   * sacaba el cursor al campo que la persona estaba completando: solo entraba
+   * la primera letra de cada uno.
+   */
   useEffect(() => {
     const anterior = document.activeElement
-
-    function alPresionar(evento) {
-      if (evento.key === 'Escape' && !disabled) {
-        evento.stopPropagation()
-        onClose()
-      }
-    }
-
-    document.addEventListener('keydown', alPresionar)
     contenedor.current?.focus()
-
     return () => {
-      document.removeEventListener('keydown', alPresionar)
-      // Devolver el foco a donde estaba evita que vuelva al principio del documento.
       if (anterior instanceof HTMLElement) anterior.focus()
     }
-  }, [onClose, disabled])
+  }, [])
+
+  useEffect(() => {
+    function alPresionar(evento) {
+      if (evento.key === 'Escape' && !bloqueado.current) {
+        evento.stopPropagation()
+        alCerrar.current()
+      }
+    }
+    document.addEventListener('keydown', alPresionar)
+    return () => document.removeEventListener('keydown', alPresionar)
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">

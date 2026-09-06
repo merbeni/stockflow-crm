@@ -1,4 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
+import { useState } from 'react'
+import userEvent from '@testing-library/user-event'
 import Modal from './Modal'
 
 describe('Modal', () => {
@@ -68,5 +70,61 @@ describe('Modal', () => {
   it('lleva el foco adentro de la ventana al abrirse', () => {
     render(<Modal title="Title" onClose={() => {}}><p>body</p></Modal>)
     expect(screen.getByRole('dialog')).toHaveFocus()
+  })
+
+  /**
+   * Reproduce una regresión real: el efecto que maneja el foco dependía de
+   * `onClose`, que llega como función anónima y por lo tanto cambia en cada
+   * render. Con un campo controlado adentro, cada tecla provocaba un render,
+   * el efecto se volvía a ejecutar y `focus()` le sacaba el cursor al campo.
+   * Resultado: solo entraba la primera letra de cada campo, en todos los
+   * formularios del sistema que viven dentro de un modal.
+   */
+  it('deja escribir más de un carácter en un campo controlado', async () => {
+    const usuario = userEvent.setup()
+
+    function Formulario() {
+      const [valor, setValor] = useState('')
+      // onClose anónima a propósito: es como la usan todas las páginas.
+      return (
+        <Modal title="Alta" onClose={() => {}}>
+          <input
+            aria-label="Nombre"
+            value={valor}
+            onChange={(e) => setValor(e.target.value)}
+          />
+        </Modal>
+      )
+    }
+
+    render(<Formulario />)
+    const campo = screen.getByLabelText('Nombre')
+    await usuario.click(campo)
+    await usuario.keyboard('Coca Cola 500ml')
+
+    expect(campo).toHaveValue('Coca Cola 500ml')
+    expect(campo).toHaveFocus()
+  })
+
+  it('no le roba el foco al campo mientras se escribe', async () => {
+    const usuario = userEvent.setup()
+
+    function Formulario() {
+      const [valor, setValor] = useState('')
+      return (
+        <Modal title="Alta" onClose={() => {}} disabled={valor.length > 2}>
+          <input aria-label="SKU" value={valor} onChange={(e) => setValor(e.target.value)} />
+        </Modal>
+      )
+    }
+
+    render(<Formulario />)
+    const campo = screen.getByLabelText('SKU')
+    await usuario.click(campo)
+    // `disabled` cambia a mitad de camino: tampoco eso debe mover el foco.
+    await usuario.keyboard('ABC-123')
+
+    expect(campo).toHaveValue('ABC-123')
+    expect(campo).toHaveFocus()
   })
 })
