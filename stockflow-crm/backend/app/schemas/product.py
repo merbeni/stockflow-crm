@@ -3,7 +3,13 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field, computed_field, model_validator
 
-from app.schemas.validators import Sku, TextoObligatorio, TextoOpcional
+from app.schemas.validators import (
+    Cantidad,
+    Importe,
+    Sku,
+    TextoObligatorio,
+    TextoOpcional,
+)
 
 
 def _validar_decimales(current_stock, minimum_stock, permite_decimales: bool) -> None:
@@ -27,9 +33,9 @@ class ProductCreate(BaseModel):
     # números: "Coca Cola 500ml" es perfectamente válido.
     name: TextoObligatorio(255)
     description: TextoOpcional(2000) = None
-    price: Decimal = Field(..., ge=0, decimal_places=2)
-    current_stock: Decimal = Field(default=Decimal("0"), ge=0, decimal_places=3)
-    minimum_stock: Decimal = Field(default=Decimal("0"), ge=0, decimal_places=3)
+    price: Importe
+    current_stock: Cantidad = Decimal("0")
+    minimum_stock: Cantidad = Decimal("0")
     allow_decimal_stock: bool = False
 
     @model_validator(mode="after")
@@ -42,9 +48,9 @@ class ProductUpdate(BaseModel):
     sku: Sku | None = None
     name: TextoObligatorio(255) | None = None
     description: TextoOpcional(2000) = None
-    price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
-    current_stock: Decimal | None = Field(default=None, ge=0, decimal_places=3)
-    minimum_stock: Decimal | None = Field(default=None, ge=0, decimal_places=3)
+    price: Importe | None = None
+    current_stock: Cantidad | None = None
+    minimum_stock: Cantidad | None = None
     allow_decimal_stock: bool | None = None
     is_active: bool | None = None
 

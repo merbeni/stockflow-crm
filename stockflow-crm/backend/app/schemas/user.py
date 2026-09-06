@@ -1,9 +1,10 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from app.models.user import UserRole
 from app.schemas.validators import (
+    CorreoElectronico,
     NombrePersona,
     Password,
     Telefono,
@@ -19,7 +20,7 @@ class SignupRequest(BaseModel):
 
     organization_name: TextoObligatorio(255)
     full_name: NombrePersona()
-    email: EmailStr
+    email: CorreoElectronico
     phone: Telefono
     password: Password
 
@@ -36,7 +37,7 @@ class OrganizationResponse(BaseModel):
 # ── Alta interna (la realiza un administrador dentro de su organización) ──────
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: CorreoElectronico
     password: Password
     full_name: NombrePersona()
     phone: TelefonoOpcional = None
@@ -51,12 +52,12 @@ class UserUpdate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: CorreoElectronico
     password: str
 
 
 class ResendVerificationRequest(BaseModel):
-    email: EmailStr
+    email: CorreoElectronico
 
 
 # ── Respuestas ────────────────────────────────────────────────────────────────

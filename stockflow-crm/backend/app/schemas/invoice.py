@@ -1,10 +1,14 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 from app.models.invoice import ConfidenceLevel, InvoiceStatus
 from app.schemas.validators import (
+    Cantidad,
+    CantidadPositiva,
+    CorreoElectronico,
+    Importe,
     NombrePersona,
     TelefonoOpcional,
     TextoObligatorio,
@@ -46,7 +50,7 @@ class InvoiceProcessResponse(BaseModel):
 class NewSupplierData(BaseModel):
     name: TextoObligatorio(255)
     contact_name: NombrePersona()
-    email: EmailStr
+    email: CorreoElectronico
     phone: TelefonoOpcional = None
 
 
@@ -54,8 +58,8 @@ class NewProductData(BaseModel):
     sku: Sku
     name: TextoObligatorio(255)
     description: TextoOpcional(2000) = None
-    price: Decimal = Field(..., ge=0, decimal_places=2)
-    minimum_stock: Decimal = Field(default=Decimal("0"), ge=0, decimal_places=3)
+    price: Importe
+    minimum_stock: Cantidad = Decimal("0")
     allow_decimal_stock: bool = False
 
 
@@ -73,8 +77,8 @@ class InvoiceConfirmItem(BaseModel):
     # valor detectado: la extracción automática nunca es infalible y el usuario
     # tiene que poder enmendarla antes de tocar el stock.
     description: TextoOpcional(500) = None
-    quantity: Decimal | None = Field(default=None, gt=0, decimal_places=3)
-    unit_price: Decimal | None = Field(default=None, ge=0, decimal_places=2)
+    quantity: CantidadPositiva | None = None
+    unit_price: Importe | None = None
 
 
 class InvoiceConfirmPayload(BaseModel):

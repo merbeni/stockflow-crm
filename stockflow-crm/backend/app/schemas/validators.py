@@ -5,9 +5,10 @@ Los `ValueError` que se lanzan acá llegan al usuario tal cual: el handler de
 ``app.core.errors`` les quita el prefijo "Value error, " que agrega Pydantic.
 """
 import re
+from decimal import Decimal
 from typing import Annotated, Optional
 
-from pydantic import AfterValidator, BeforeValidator, Field
+from pydantic import AfterValidator, BeforeValidator, EmailStr, Field
 
 _RE_TELEFONO = re.compile(r"^[0-9+\-\s().]{6,}$")
 _RE_SKU = re.compile(r"^[A-Za-z0-9._\-/]+$")
@@ -36,6 +37,17 @@ def _no_vacio(valor: str) -> str:
     if not valor or not valor.strip():
         raise ValueError("No puede estar vacío.")
     return valor
+
+
+def _normalizar_correo(valor):
+    """
+    Pasa el correo a minúsculas.
+
+    El correo no distingue mayúsculas: sin esto, "Ana@test.com" y "ana@test.com"
+    generaban dos cuentas distintas, y quien se registraba con mayúsculas no
+    podía volver a entrar escribiéndolo en minúsculas.
+    """
+    return valor.strip().lower() if isinstance(valor, str) else valor
 
 
 def _sin_digitos(valor: str) -> str:
@@ -146,3 +158,23 @@ Sku = Annotated[
 ]
 
 Password = Annotated[str, AfterValidator(_password_segura)]
+
+CorreoElectronico = Annotated[EmailStr, BeforeValidator(_normalizar_correo)]
+
+CorreoOpcional = Annotated[
+    Optional[EmailStr], BeforeValidator(lambda v: _normalizar_correo(v) or None)
+]
+
+# ── importes y cantidades ─────────────────────────────────────────────────────
+# Los límites replican el tipo de la columna en la base: sin ellos, un valor
+# desmedido llegaba hasta PostgreSQL y volvía como error 500 en lugar de un
+# mensaje de validación.
+
+Importe = Annotated[Decimal, Field(ge=0, max_digits=10, decimal_places=2)]
+"""Monto en pesos. Coincide con Numeric(10,2): hasta 99.999.999,99."""
+
+Cantidad = Annotated[Decimal, Field(ge=0, max_digits=10, decimal_places=3)]
+"""Cantidad de stock. Coincide con Numeric(10,3): hasta 9.999.999,999."""
+
+CantidadPositiva = Annotated[Decimal, Field(gt=0, max_digits=10, decimal_places=3)]
+"""Cantidad que además debe ser mayor que cero (líneas de factura y pedidos)."""

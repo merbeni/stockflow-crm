@@ -98,6 +98,25 @@ class TestValidacionesDeProducto:
         assert resp.status_code == 422
         assert "sku" in resp.json()["errors"]
 
+    def test_precio_desmedido_da_422_y_no_error_de_servidor(self, client, auth_headers):
+        """
+        Un importe mayor al que admite la columna llegaba hasta PostgreSQL y
+        volvía como error 500. Tiene que frenarse en la validación.
+        """
+        resp = client.post("/products", json={
+            "sku": "ENORME-1", "name": "Producto", "price": "99999999999999999999.00",
+        }, headers=auth_headers)
+        assert resp.status_code == 422, "no debe llegar a la base ni dar 500"
+        assert "price" in resp.json()["errors"]
+
+    def test_stock_desmedido_da_422(self, client, auth_headers):
+        resp = client.post("/products", json={
+            "sku": "ENORME-2", "name": "Producto", "price": "1.00",
+            "current_stock": "99999999999999999999",
+        }, headers=auth_headers)
+        assert resp.status_code == 422
+        assert "current_stock" in resp.json()["errors"]
+
     def test_precio_negativo_da_422(self, client, auth_headers):
         resp = client.post("/products", json={
             "sku": "NEG-1", "name": "Producto", "price": "-5.00",

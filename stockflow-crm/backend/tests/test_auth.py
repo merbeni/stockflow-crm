@@ -120,6 +120,28 @@ class TestVerificacionDeCorreo:
         assert conocida.status_code == desconocida.status_code == 200
         assert conocida.json() == desconocida.json()
 
+    def test_el_correo_no_distingue_mayusculas(self, client):
+        """
+        "Ana@test.com" y "ana@test.com" son la misma casilla. Sin normalizar,
+        se creaban dos cuentas distintas y quien se registraba con mayúsculas
+        no podía volver a entrar escribiéndolo en minúsculas.
+        """
+        alta = client.post("/auth/signup", json={**ALTA_VALIDA, "email": "Ana@Test.com"})
+        assert alta.status_code == 201
+        assert alta.json()["user"]["email"] == "ana@test.com"
+
+        duplicada = client.post(
+            "/auth/signup",
+            json={**ALTA_VALIDA, "organization_name": "Otra", "email": "ANA@TEST.COM"},
+        )
+        assert duplicada.status_code == 400, "no debería permitir una segunda cuenta"
+
+        _marcar_verificado("ana@test.com")
+        login = client.post(
+            "/auth/login", json={"email": "ANA@test.COM", "password": "password123"}
+        )
+        assert login.status_code == 200, "debe poder entrar escribiéndolo distinto"
+
     def test_la_bienvenida_se_envia_al_verificar_y_no_al_registrarse(self, client, mocker):
         """
         Al registrarse llegaban dos correos a la vez: el de verificación y uno de

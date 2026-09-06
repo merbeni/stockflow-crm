@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
+from app.schemas.validators import CantidadPositiva, Importe
 from app.models.order import OrderStatus
 
 
@@ -14,8 +15,8 @@ class OrderCreate(BaseModel):
 
 class OrderItemAdd(BaseModel):
     product_id: int
-    quantity: Decimal = Field(..., gt=0, decimal_places=3)
-    unit_price: Decimal = Field(..., ge=0, decimal_places=2)
+    quantity: CantidadPositiva
+    unit_price: Importe
 
 
 # ── Responses ─────────────────────────────────────────────────────────────────

@@ -1,24 +1,31 @@
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from app.models.order import OrderStatus
-from app.schemas.validators import NombrePersona, Telefono, TelefonoOpcional, TextoOpcional
+from app.schemas.validators import (
+    CorreoElectronico,
+    CorreoOpcional,
+    NombrePersona,
+    Telefono,
+    TelefonoOpcional,
+    TextoOpcional,
+)
 
 
 # ── Customer CRUD ─────────────────────────────────────────────────────────────
 
 class CustomerCreate(BaseModel):
     name: NombrePersona()
-    email: EmailStr
+    email: CorreoElectronico
     phone: Telefono
     address: TextoOpcional(500) = None
 
 
 class CustomerUpdate(BaseModel):
     name: NombrePersona() | None = None
-    email: EmailStr | None = None
+    email: CorreoOpcional = None
     phone: TelefonoOpcional = None
     address: TextoOpcional(500) = None
 
