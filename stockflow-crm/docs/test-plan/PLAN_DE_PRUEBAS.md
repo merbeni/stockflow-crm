@@ -384,6 +384,10 @@ devolver cualquier cosa. La estrategia es no confiar en nada de lo que llega.
 | PN-USU-03 | Crear un administrador | Operador | 403 — **escalada de privilegios** | ⚔️ |
 | PN-USU-04 | Quitarse el rol de administrador siendo el único | Administrador único | 400, la organización no puede quedarse sin administradores | 🤖 |
 | PN-USU-05 | Eliminar la propia cuenta | Administrador | 400 | 🤖 |
+| PN-USU-05b | **Quitarse el rol habiendo otro administrador** | Administrador | 400 — **igual se rechaza**, ver más abajo | 🤖 |
+| PN-USU-05c | Desactivar la propia cuenta | Administrador | 400 | 🤖 |
+| PN-USU-05d | Asignarse el rol que ya se tiene | Administrador | 200 — no hay degradación, no corresponde bloquear | 🤖 |
+| PN-USU-05e | Degradar a **otro** administrador | Administrador | 200 — la restricción es sobre uno mismo | 🤖 |
 | PN-USU-06 | Editar un usuario de otra organización | Administrador | 404 | 🤖 |
 | PN-USU-07 | Listar usuarios de otra organización | Administrador | Ninguno en común | 🤖 |
 | PN-USU-08 | Alta pública eligiendo el rol | Anónimo | 404, el endpoint público de registro no existe | 🤖 |
@@ -393,6 +397,15 @@ devolver cualquier cosa. La estrategia es no confiar en nada de lo que llega.
 > permitía registrarse eligiendo el rol: cualquiera podía crearse una cuenta de
 > administrador. La prueba se conserva para que no vuelva a aparecer si alguien reintroduce
 > la ruta.
+>
+> **Por qué PN-USU-05b se rechaza aunque quede otro administrador.** La regla «siempre tiene
+> que haber un administrador» protege a la organización, no a la persona. Con dos
+> administradores, uno podía quitarse el rol: el cambio se aplicaba, perdía el acceso al
+> módulo en el acto y no tenía forma de deshacerlo —justamente porque ya no era
+> administrador—. Es una puerta de un solo sentido, y una acción irreversible no debería
+> estar a un clic de distancia sin aviso. Ahora vale el mismo criterio que ya regía para el
+> borrado: **sobre la propia cuenta no se hacen cambios que quiten acceso.** Otra persona con
+> permisos sí puede hacerlo (PN-USU-05e), y ahí la decisión es deliberada y de a dos.
 
 ---
 
@@ -500,7 +513,43 @@ estados:
 | Con error | El backend no responde | Mensaje comprensible y posibilidad de reintentar | ✅ |
 | Con datos | Uso normal | Listado correcto y ordenado | ✅ |
 
-### 10.2 Adaptación a distintas pantallas
+### 10.2 El color de las acciones
+
+Las acciones de cada fila eran textos subrayados del mismo peso visual: «Editar»,
+«Desactivar» y «Eliminar» se veían casi igual y había que **leerlos** para saber cuál
+destruía datos. Ahora cada verbo tiene un color y el color significa siempre lo mismo en
+todo el sistema:
+
+| Color | Significado | Acciones |
+|-------|-------------|----------|
+| Gris | No cambia nada, solo muestra | Pedidos (historial) |
+| Azul | Cambia datos, se puede volver atrás | Editar, + Producto |
+| Verde | Habilita o hace avanzar | Activar, Marcar como enviado |
+| Ámbar | Saca de circulación, reversible | Desactivar, Hacer operador |
+| Rojo | Destruye, no se puede deshacer | Eliminar |
+
+Tres decisiones que vale la pena justificar:
+
+- **Son botones tonales, no rellenos saturados.** Tres botones sólidos por fila convierten
+  una tabla en un semáforo: si todo grita, nada resalta y el rojo deja de funcionar como
+  advertencia.
+- **El verde de marca no se usa para «Editar».** En este sistema el verde ya significa
+  «activo»; un botón «Editar» verde se leería como «activar».
+- **El color acompaña al texto, nunca lo reemplaza** (WCAG 1.4.1). Quien no distingue el
+  rojo del ámbar sigue leyendo «Eliminar» y «Desactivar».
+
+| Elemento | Texto sobre su relleno | Borde contra la peor fila |
+|----------|----------------------:|--------------------------:|
+| Editar | 7.15:1 | 4.72:1 |
+| Activar | 6.49:1 | 4.59:1 |
+| Desactivar | 6.37:1 | 4.59:1 |
+| Eliminar | 6.80:1 | 4.41:1 |
+
+> «La peor fila» es la de stock bajo, teñida de rojo claro: es el fondo con el que menos
+> contrastan los botones. Se mide contra ese caso y no contra el blanco, porque de nada
+> sirve una paleta que solo cumple en la fila fácil.
+
+### 10.3 Adaptación a distintas pantallas
 
 | Ancho | Dispositivo de referencia | Verificación | Estado |
 |-------|--------------------------|--------------|:------:|
@@ -621,6 +670,10 @@ organizaciones, escalada de privilegios, tokens falsificados y concurrencia.
 | DEF-07 | No existía indicador de foco: navegando con Tab no se sabía qué control estaba seleccionado | Media | Auditoría de accesibilidad | ✅ Corregido — regla `:focus-visible` global |
 | DEF-08 | En la pantalla de facturas, las etiquetas estaban solo **al lado** de los campos, sin asociarse a ellos: un lector de pantalla no podía nombrarlos y hacer clic en la etiqueta no llevaba el cursor al campo | Media | Auditoría de accesibilidad | ✅ Corregido — `htmlFor`/`id` en los 8 campos, más `aria-describedby` y `role="alert"` en los errores |
 | DEF-09 | La ventana modal no se cerraba con Escape, no se anunciaba como diálogo y su botón de cerrar («×») no tenía nombre accesible; además el foco no entraba al abrirla ni volvía al cerrarla | Media | Auditoría de accesibilidad | ✅ Corregido — `role="dialog"`, `aria-modal`, título como nombre accesible, Escape y manejo del foco |
+| DEF-10 | Un administrador podía **quitarse a sí mismo el rol** o desactivarse. El cambio se aplicaba, perdía el acceso al módulo «Usuarios» en el acto y no había forma de revertirlo por su cuenta | **Grave** | Uso real | ✅ Corregido — el backend lo rechaza y la interfaz no ofrece la acción sobre la propia cuenta |
+| DEF-11 | El detalle de un movimiento mostraba **«Sumada al stock»** en las líneas de factura que el usuario había omitido. El stock era correcto; el que mentía era el informe | Media | Uso real | ✅ Corregido — el esquema de la respuesta no incluía el campo `skipped` |
+| DEF-12 | La pantalla de usuarios mostraba **a la vez** un cartel verde de éxito y uno rojo de error sobre la misma acción, con la tabla desactualizada debajo | Media | Uso real | ✅ Corregido — si la recarga falla se retira el aviso de éxito |
+| DEF-13 | Las acciones de cada fila («Editar», «Desactivar», «Eliminar») eran textos del mismo peso visual: había que leerlos para saber cuál destruía datos | Baja | Revisión de usabilidad | ✅ Corregido — botones tonales con un color por tipo de acción (sección 10.3) |
 
 ### 13.3 Pruebas de regresión agregadas
 
@@ -634,6 +687,8 @@ Cada defecto dejó su prueba:
 | DEF-05 | `test_el_correo_no_distingue_mayusculas` |
 | DEF-06 | Ratios anotados en el propio archivo de estilos (sección 11.1) |
 | DEF-09 | `se_cierra_con_la_tecla_Escape`, `ignora_Escape_mientras_hay_una_operación_en_curso`, `se_anuncia_como_diálogo_y_toma_el_título_como_nombre_accesible`, `el_botón_de_cerrar_tiene_nombre_accesible`, `lleva_el_foco_adentro_de_la_ventana_al_abrirse` |
+| DEF-10 | `test_un_admin_no_puede_quitarse_el_rol_aunque_haya_otro_admin`, `test_un_admin_no_puede_desactivar_su_propia_cuenta`, `test_el_bloqueo_solo_aplica_si_realmente_se_degrada`, `test_otro_admin_si_puede_degradar_a_un_companero` |
+| DEF-11 | `test_el_detalle_marca_las_lineas_omitidas_de_la_factura` |
 
 > **DEF-03, DEF-07 y DEF-08 no tienen prueba automatizada.** Son propiedades del marcado
 > —que un campo tenga su etiqueta asociada, que exista una regla de foco— que se verifican
@@ -644,12 +699,12 @@ Cada defecto dejó su prueba:
 
 Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba conviene sostener:
 
-- **Ninguno de los nueve apareció en las pruebas automatizadas existentes.** La suite estaba
-  en verde con los nueve defectos presentes. Una suite verde prueba que no se rompió lo que
+- **Ninguno de los trece apareció en las pruebas automatizadas existentes.** La suite estaba
+  en verde con los trece defectos presentes. Una suite verde prueba que no se rompió lo que
   ya se probaba; no prueba que el sistema esté bien.
-- **Tres salieron del uso real** (DEF-01 a DEF-03). Son problemas de experiencia que ninguna
-  aserción sobre un código HTTP puede detectar: el sistema respondía 200 y hacía exactamente
-  lo programado; lo que estaba mal era lo programado.
+- **Seis salieron del uso real** (DEF-01 a DEF-03, DEF-10 a DEF-12). Son problemas que
+  ninguna aserción sobre un código HTTP puede detectar: el sistema respondía 200 y hacía
+  exactamente lo programado; lo que estaba mal era lo programado.
 - **Dos salieron de atacar el sistema a propósito** (DEF-04, DEF-05). Los dos son casos que
   a nadie se le ocurre escribir mientras programa la funcionalidad, porque quien la programa
   ya sabe cómo se usa «bien».
@@ -660,14 +715,27 @@ Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba convi
 
 | Origen | Defectos | Qué tipo de problema encuentra |
 |--------|:--------:|-------------------------------|
-| Uso real por otra persona | 3 | Lo que está mal aunque funcione |
-| Pruebas adversariales | 2 | Lo que nadie pensó al programar |
+| Uso real por otra persona | 6 | Lo que está mal aunque funcione |
 | Auditoría medida (contraste, marcado) | 4 | Lo que no se ve mirando |
+| Pruebas adversariales | 2 | Lo que nadie pensó al programar |
+| Revisión de usabilidad | 1 | Lo que cuesta más de lo necesario |
 | Suite automatizada | 0 | Lo que ya se había roto antes |
 
-Los cuatro orígenes encuentran cosas distintas y ninguno reemplaza a los otros. De ahí que
-este plan tenga cuatro capas y no una. El renglón de la suite automatizada en cero no es un
-reproche: su trabajo es que ninguno de estos nueve vuelva, y para eso sí es insustituible.
+Los orígenes encuentran cosas distintas y ninguno reemplaza a los otros. De ahí que este
+plan tenga varias capas y no una. El renglón de la suite automatizada en cero no es un
+reproche: su trabajo es que ninguno de estos trece vuelva, y para eso sí es insustituible.
+
+**El uso real es, por lejos, la fuente más productiva.** Casi la mitad de los defectos
+salieron de que otra persona usara el sistema con datos propios, y son los de mayor
+severidad. Tiene una explicación: quien programó una función conoce el camino previsto y lo
+recorre sin desviarse. Los tres defectos más graves del proyecto —el doble correo
+contradictorio, el administrador que se dejaba sin acceso y el informe que decía que una
+línea omitida había sumado stock— aparecieron los tres en la primera semana de uso normal,
+no en ninguna prueba diseñada.
+
+**Corolario para la planificación:** conviene reservar tiempo de uso real *antes* de la
+entrega, no solo de escritura de pruebas. Una hora de otra persona operando el sistema con
+sus propios datos rindió más defectos que cualquier otra hora invertida en este proyecto.
 
 ---
 

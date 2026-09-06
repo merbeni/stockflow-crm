@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
+import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
 import Modal from '../components/ui/Modal'
@@ -160,19 +161,15 @@ export default function Suppliers() {
                     <td className="px-4 py-3 text-tx-secondary">{s.contact_name ?? '—'}</td>
                     <td className="px-4 py-3 text-tx-secondary">{s.email ?? '—'}</td>
                     <td className="px-4 py-3 text-tx-secondary">{s.phone ?? '—'}</td>
-                    <td className="space-x-3 px-4 py-3 text-right">
-                      <button
-                        onClick={() => openEdit(s)}
-                        className="text-xs text-primary-text hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(s)}
-                        className="text-xs text-danger hover:underline"
-                      >
-                        Eliminar
-                      </button>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <ActionButton tono="editar" onClick={() => openEdit(s)}>
+                          Editar
+                        </ActionButton>
+                        <ActionButton tono="eliminar" onClick={() => handleDelete(s)}>
+                          Eliminar
+                        </ActionButton>
+                      </div>
                     </td>
                   </tr>
                 ))}

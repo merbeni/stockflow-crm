@@ -103,6 +103,19 @@ def update(
         nuevo_rol != UserRole.admin or not sigue_activo
     )
 
+    # Igual que con el borrado, nadie puede degradarse ni desactivarse a sí
+    # mismo. Quitarse el rol de administrador es una puerta de un solo sentido:
+    # en cuanto se aplica, la persona pierde el acceso a esta misma pantalla y
+    # no puede revertirlo. Que exista otro administrador no alcanza: el error
+    # se comete igual y hay que ir a pedirle a alguien que lo deshaga.
+    if user.id == admin.id and deja_de_ser_admin:
+        accion = "desactivar tu propia cuenta" if not sigue_activo else "quitarte el rol de administrador"
+        raise DomainError(
+            f"No podés {accion}: perderías el acceso a la gestión de usuarios "
+            "y no podrías deshacerlo. Pedile a otro administrador que lo haga.",
+            field="role" if sigue_activo else "is_active",
+        )
+
     # Sin este control, un administrador podría dejar a la organización sin
     # ningún admin y nadie podría volver a gestionar usuarios.
     if deja_de_ser_admin and count_active_admins(

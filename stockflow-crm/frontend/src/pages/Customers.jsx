@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
 import Badge from '../components/ui/Badge'
+import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
 import Modal from '../components/ui/Modal'
@@ -175,25 +176,18 @@ export default function Customers() {
                     <td className="max-w-xs truncate px-4 py-3 text-tx-secondary">
                       {c.address ?? '—'}
                     </td>
-                    <td className="space-x-3 whitespace-nowrap px-4 py-3 text-right">
-                      <button
-                        onClick={() => openHistory(c.id)}
-                        className="text-xs text-tx-muted hover:underline"
-                      >
-                        Pedidos
-                      </button>
-                      <button
-                        onClick={() => openEdit(c)}
-                        className="text-xs text-primary-text hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDelete(c)}
-                        className="text-xs text-danger hover:underline"
-                      >
-                        Eliminar
-                      </button>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <ActionButton tono="consultar" onClick={() => openHistory(c.id)}>
+                          Pedidos
+                        </ActionButton>
+                        <ActionButton tono="editar" onClick={() => openEdit(c)}>
+                          Editar
+                        </ActionButton>
+                        <ActionButton tono="eliminar" onClick={() => handleDelete(c)}>
+                          Eliminar
+                        </ActionButton>
+                      </div>
                     </td>
                   </tr>
                 ))}

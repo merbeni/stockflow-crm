@@ -49,6 +49,40 @@
 
   --color-focus-ring: #047857;      /* 5.48:1 — foco visible por teclado */
 
+  /* ── Acciones de fila ────────────────────────────────────────────────────
+   * Cada acción tiene su propio color, y el color significa siempre lo mismo:
+   *
+   *   azul  → cambia datos, es reversible y no rompe nada  (Editar)
+   *   verde → devuelve algo al uso                          (Activar)
+   *   ámbar → saca algo de circulación, se puede deshacer    (Desactivar)
+   *   rojo  → destruye, no se puede deshacer                 (Eliminar)
+   *
+   * El verde de marca no se usa acá: ya significa «activo», y un botón
+   * «Editar» verde se leería como «activar».
+   *
+   * Son botones tonales (relleno claro + texto oscuro del mismo tono) en vez
+   * de rellenos saturados: tres botones sólidos por fila convierten una tabla
+   * en un semáforo y hacen que nada resalte. El texto va sobre su relleno con
+   * 6.4:1 o más, y el borde llega a 3:1 contra el fondo de la fila —incluso
+   * sobre las filas teñidas de gris (inactivo) o rojo (stock bajo)—, así que
+   * el botón se distingue como control y no solo por el color.
+   */
+  --color-act-edit-bg: #DBEAFE;
+  --color-act-edit-border: #2563EB;   /* 4.72:1 contra la peor fila */
+  --color-act-edit-text: #1E40AF;     /* 7.15:1 sobre su relleno */
+
+  --color-act-on-bg: #DCFCE7;
+  --color-act-on-border: #15803D;     /* 4.59:1 */
+  --color-act-on-text: #166534;       /* 6.49:1 */
+
+  --color-act-off-bg: #FEF3C7;
+  --color-act-off-border: #B45309;    /* 4.59:1 */
+  --color-act-off-text: #92400E;      /* 6.37:1 */
+
+  --color-act-del-bg: #FEE2E2;
+  --color-act-del-border: #DC2626;    /* 4.41:1 */
+  --color-act-del-text: #991B1B;      /* 6.80:1 */
+
   /* ── Confianza de la extracción por IA ──────────────────────────────────── */
   --color-confidence-high-bg: #D1FAE5;
   --color-confidence-high-border: #6EE7B7;

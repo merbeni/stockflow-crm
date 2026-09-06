@@ -279,6 +279,93 @@ class TestRegistroInterno:
         resp = client.delete(f"/users/{yo['id']}", headers=auth_headers)
         assert resp.status_code == 400
 
+    def test_un_admin_no_puede_quitarse_el_rol_aunque_haya_otro_admin(
+        self, client, auth_headers
+    ):
+        """
+        Degradarse es una puerta de un solo sentido: al aplicarse, la persona
+        pierde el acceso a la gestión de usuarios y no puede revertirlo.
+
+        La regla de "al menos un administrador" no alcanzaba, porque con dos
+        administradores el cambio se permitía: el alta salía bien, la recarga
+        del listado devolvía 403 y quedaban en pantalla un cartel de éxito y
+        uno de error a la vez.
+        """
+        client.post(
+            "/users",
+            json={
+                "email": "segundo.admin@test.com",
+                "password": "password123",
+                "full_name": "Segundo Admin",
+                "role": "admin",
+            },
+            headers=auth_headers,
+        )
+        yo = client.get("/auth/me", headers=auth_headers).json()
+
+        resp = client.put(
+            f"/users/{yo['id']}", json={"role": "operator"}, headers=auth_headers
+        )
+        assert resp.status_code == 400
+        assert "otro administrador" in resp.json()["detail"].lower()
+
+        # Y el rol tiene que haber quedado intacto.
+        assert client.get("/auth/me", headers=auth_headers).json()["role"] == "admin"
+
+    def test_un_admin_no_puede_desactivar_su_propia_cuenta(self, client, auth_headers):
+        client.post(
+            "/users",
+            json={
+                "email": "otro.admin@test.com",
+                "password": "password123",
+                "full_name": "Otro Admin",
+                "role": "admin",
+            },
+            headers=auth_headers,
+        )
+        yo = client.get("/auth/me", headers=auth_headers).json()
+
+        resp = client.put(
+            f"/users/{yo['id']}", json={"is_active": False}, headers=auth_headers
+        )
+        assert resp.status_code == 400
+        assert client.get("/auth/me", headers=auth_headers).status_code == 200
+
+    def test_el_bloqueo_solo_aplica_si_realmente_se_degrada(self, client, auth_headers):
+        """
+        La guarda tiene que mirar el efecto del cambio, no quién lo pide. Un
+        administrador que se manda a sí mismo el rol que ya tiene no está
+        perdiendo nada, así que no corresponde rechazarlo.
+        """
+        yo = client.get("/auth/me", headers=auth_headers).json()
+        resp = client.put(
+            f"/users/{yo['id']}", json={"role": "admin"}, headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["role"] == "admin"
+
+    def test_otro_admin_si_puede_degradar_a_un_companero(self, client, auth_headers):
+        """
+        La restricción es sobre uno mismo, no sobre el rol: otra persona con
+        permisos sí puede hacerlo, y ahí el cambio es deliberado y revisado.
+        """
+        creado = client.post(
+            "/users",
+            json={
+                "email": "companero@test.com",
+                "password": "password123",
+                "full_name": "Companero Admin",
+                "role": "admin",
+            },
+            headers=auth_headers,
+        ).json()
+
+        resp = client.put(
+            f"/users/{creado['id']}", json={"role": "operator"}, headers=auth_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["role"] == "operator"
+
     def test_no_se_ven_usuarios_de_otra_organizacion(self, client, auth_headers, other_org_headers):
         mios = client.get("/users", headers=auth_headers).json()
         otros = client.get("/users", headers=other_org_headers).json()

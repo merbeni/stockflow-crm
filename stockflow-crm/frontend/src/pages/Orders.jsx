@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
 import Badge from '../components/ui/Badge'
+import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
 import Modal from '../components/ui/Modal'
@@ -195,27 +196,18 @@ export default function Orders() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-tx-secondary">{o.customer_name}</span>
                   {SIGUIENTE_ESTADO[o.status] && (
-                    <button
-                      onClick={() => handleAdvance(o)}
-                      className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-text hover:bg-primary-dark"
-                    >
+                    <ActionButton tono="avanzar" onClick={() => handleAdvance(o)}>
                       Marcar como {SIGUIENTE_ESTADO[o.status]}
-                    </button>
+                    </ActionButton>
                   )}
                   {o.status === 'pending' && (
                     <>
-                      <button
-                        onClick={() => openAddItem(o)}
-                        className="rounded-md bg-sidebar px-2 py-1 text-xs text-tx-secondary hover:bg-brand-border"
-                      >
+                      <ActionButton tono="editar" onClick={() => openAddItem(o)}>
                         + Producto
-                      </button>
-                      <button
-                        onClick={() => handleDelete(o)}
-                        className="text-xs text-danger hover:underline"
-                      >
+                      </ActionButton>
+                      <ActionButton tono="eliminar" onClick={() => handleDelete(o)}>
                         Eliminar
-                      </button>
+                      </ActionButton>
                     </>
                   )}
                 </div>

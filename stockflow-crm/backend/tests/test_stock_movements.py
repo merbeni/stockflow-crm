@@ -144,6 +144,57 @@ class TestGetMovement:
         assert resp.status_code == 200
         assert resp.json()["order_id"] == order_id
 
+    def test_el_detalle_marca_las_lineas_omitidas_de_la_factura(
+        self, client, auth_headers, mocker, make_product, db
+    ):
+        """
+        El detalle del movimiento es la pantalla de trazabilidad: es donde se
+        mira para saber qué pasó con cada línea de la factura.
+
+        El esquema de esta respuesta no incluía `skipped`, así que las líneas
+        que el usuario había omitido al confirmar llegaban sin la marca y la
+        interfaz las mostraba como «Sumada al stock». El stock estaba bien —la
+        línea no lo tocaba—, pero el detalle decía justo lo contrario.
+        """
+        from tests.test_invoices import _upload_invoice
+        from app.models.stock_movement import StockMovement
+
+        producto = make_product(sku="OMIT-P1", name="Blue Widget", current_stock="0.000")
+        procesada = _upload_invoice(client, auth_headers, mocker).json()
+
+        azul = next(i for i in procesada["items"] if "Blue Widget" in i["description"])
+        rojo = next(i for i in procesada["items"] if "Red Gadget" in i["description"])
+
+        confirmacion = client.post(
+            f"/invoices/{procesada['invoice_id']}/confirm",
+            json={"items": [
+                {"invoice_item_id": azul["id"], "product_id": producto["id"]},
+                {"invoice_item_id": rojo["id"], "skip": True},
+            ]},
+            headers=auth_headers,
+        )
+        assert confirmacion.status_code == 200, confirmacion.text
+
+        movimiento = (
+            db.query(StockMovement)
+            .filter(StockMovement.invoice_id == procesada["invoice_id"])
+            .first()
+        )
+        assert movimiento is not None, "la línea no omitida debe generar un movimiento"
+
+        resp = client.get(f"/stock-movements/{movimiento.id}", headers=auth_headers)
+        assert resp.status_code == 200
+        lineas = {i["description"]: i for i in resp.json()["invoice"]["items"]}
+
+        assert lineas["Red Gadget"]["skipped"] is True, "la omitida debe venir marcada"
+        assert lineas["Blue Widget"]["skipped"] is False
+
+        # Y la omisión tiene que ser real, no solo una etiqueta.
+        movimientos = client.get("/stock-movements", headers=auth_headers).json()
+        assert all(
+            m["product"]["sku"] != "RED-GADGET" for m in movimientos
+        ), "una línea omitida no puede generar movimiento de stock"
+
 
 class TestAislamientoDeMovimientos:
     def test_no_se_listan_movimientos_de_otra_organizacion(

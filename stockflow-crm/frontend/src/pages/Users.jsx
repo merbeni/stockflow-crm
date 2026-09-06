@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
+import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
 import Modal from '../components/ui/Modal'
@@ -47,6 +48,11 @@ export default function Users() {
       setUsuarios(listado.data)
       setOrganizacion(org.data)
     } catch (err) {
+      // Si no se pudo recargar, la tabla que quedó en pantalla es vieja: no
+      // corresponde seguir mostrando el aviso de que el cambio salió bien.
+      // Aparecían los dos carteles juntos, uno verde y uno rojo, diciendo cosas
+      // opuestas sobre la misma acción.
+      setAviso('')
       setError(getErrorMessage(err, 'No pudimos cargar los usuarios.'))
     } finally {
       setCargando(false)
@@ -178,11 +184,19 @@ export default function Users() {
               <tbody className="divide-y divide-gray-100">
                 {usuarios.map((u) => {
                   const esUnoMismo = u.id === usuarioActual?.id
-                  // La organización no puede quedarse sin administradores activos:
-                  // si este es el único, no se le ofrecen las acciones que lo
-                  // dejarían sin ese rol (el backend además las rechaza).
-                  const esUnicoAdmin =
-                    u.role === 'admin' && u.is_active && adminsActivos === 1
+                  const esAdminActivo = u.role === 'admin' && u.is_active
+                  // Dos motivos distintos para no ofrecer «Hacer operador» ni
+                  // «Desactivar» sobre esta fila. El backend rechaza los dos;
+                  // acá se evita que el botón siquiera aparezca.
+                  const bloqueo = esAdminActivo && esUnoMismo
+                    ? 'No podés quitarte el rol de administrador ni desactivar tu propia ' +
+                      'cuenta: perderías el acceso a esta pantalla y no podrías deshacerlo. ' +
+                      'Pedile a otro administrador que lo haga.'
+                    : esAdminActivo && adminsActivos === 1
+                      ? 'La organización tiene que conservar al menos un administrador ' +
+                        'activo. Asigná el rol de administrador a otra persona para poder ' +
+                        'cambiar o desactivar esta cuenta.'
+                      : null
                   return (
                     <tr key={u.id} className={u.is_active ? '' : 'bg-gray-50 opacity-60'}>
                       <td className="px-4 py-3 font-medium text-tx-primary">
@@ -213,54 +227,51 @@ export default function Users() {
                           <span className="text-warning">Falta verificar el correo</span>
                         )}
                       </td>
-                      <td className="space-x-3 px-4 py-3 text-right">
-                        {esUnicoAdmin ? (
-                          <span
-                            className="cursor-help text-xs italic text-tx-muted"
-                            title="La organización tiene que conservar al menos un administrador activo. Asigná el rol de administrador a otra persona para poder cambiar o desactivar esta cuenta."
-                          >
-                            Único administrador
-                          </span>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() =>
-                                cambiar(
-                                  u,
-                                  { role: u.role === 'admin' ? 'operator' : 'admin' },
-                                  `${u.email} ahora es ${
-                                    u.role === 'admin' ? 'operador' : 'administrador'
-                                  }.`
-                                )
-                              }
-                              className="text-xs text-primary-text hover:underline"
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {bloqueo ? (
+                            <span
+                              className="cursor-help text-xs italic text-tx-muted"
+                              title={bloqueo}
                             >
-                              {u.role === 'admin' ? 'Hacer operador' : 'Hacer administrador'}
-                            </button>
-                            <button
-                              onClick={() =>
-                                cambiar(
-                                  u,
-                                  { is_active: !u.is_active },
-                                  `${u.email} quedó ${u.is_active ? 'desactivado' : 'activo'}.`
-                                )
-                              }
-                              className={`text-xs hover:underline ${
-                                u.is_active ? 'text-warning' : 'text-success'
-                              }`}
-                            >
-                              {u.is_active ? 'Desactivar' : 'Activar'}
-                            </button>
-                          </>
-                        )}
-                        {!esUnoMismo && (
-                          <button
-                            onClick={() => eliminar(u)}
-                            className="text-xs text-danger hover:underline"
-                          >
-                            Eliminar
-                          </button>
-                        )}
+                              {esUnoMismo ? 'Tu propia cuenta' : 'Único administrador'}
+                            </span>
+                          ) : (
+                            <>
+                              <ActionButton
+                                tono={u.role === 'admin' ? 'desactivar' : 'activar'}
+                                onClick={() =>
+                                  cambiar(
+                                    u,
+                                    { role: u.role === 'admin' ? 'operator' : 'admin' },
+                                    `${u.email} ahora es ${
+                                      u.role === 'admin' ? 'operador' : 'administrador'
+                                    }.`
+                                  )
+                                }
+                              >
+                                {u.role === 'admin' ? 'Hacer operador' : 'Hacer administrador'}
+                              </ActionButton>
+                              <ActionButton
+                                tono={u.is_active ? 'desactivar' : 'activar'}
+                                onClick={() =>
+                                  cambiar(
+                                    u,
+                                    { is_active: !u.is_active },
+                                    `${u.email} quedó ${u.is_active ? 'desactivado' : 'activo'}.`
+                                  )
+                                }
+                              >
+                                {u.is_active ? 'Desactivar' : 'Activar'}
+                              </ActionButton>
+                            </>
+                          )}
+                          {!esUnoMismo && (
+                            <ActionButton tono="eliminar" onClick={() => eliminar(u)}>
+                              Eliminar
+                            </ActionButton>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )

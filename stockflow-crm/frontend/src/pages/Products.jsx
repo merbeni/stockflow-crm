@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
+import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
 import Modal from '../components/ui/Modal'
@@ -231,32 +232,29 @@ export default function Products() {
                     <td className="px-4 py-3 text-tx-secondary">
                       {formatearNumero(p.minimum_stock)}
                     </td>
-                    <td className="space-x-3 px-4 py-3 text-right">
-                      <button
-                        onClick={() => openEdit(p)}
-                        className="text-xs text-primary-text hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(p)}
-                        className={`text-xs hover:underline ${
-                          p.is_active ? 'text-warning' : 'text-success'
-                        }`}
-                      >
-                        {p.is_active ? 'Desactivar' : 'Activar'}
-                      </button>
-                      {/* El backend informa si el producto se puede borrar, así
-                          que el botón se deshabilita con el motivo a la vista
-                          en lugar de fallar recién al pulsarlo. */}
-                      <button
-                        onClick={() => handleDelete(p)}
-                        disabled={p.can_delete === false}
-                        title={p.delete_blocked_reason ?? 'Eliminar el producto'}
-                        className="text-xs text-danger hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
-                      >
-                        Eliminar
-                      </button>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <ActionButton tono="editar" onClick={() => openEdit(p)}>
+                          Editar
+                        </ActionButton>
+                        <ActionButton
+                          tono={p.is_active ? 'desactivar' : 'activar'}
+                          onClick={() => handleToggleActive(p)}
+                        >
+                          {p.is_active ? 'Desactivar' : 'Activar'}
+                        </ActionButton>
+                        {/* El backend informa si el producto se puede borrar, así
+                            que el botón se deshabilita con el motivo a la vista
+                            en lugar de fallar recién al pulsarlo. */}
+                        <ActionButton
+                          tono="eliminar"
+                          onClick={() => handleDelete(p)}
+                          disabled={p.can_delete === false}
+                          title={p.delete_blocked_reason ?? 'Eliminar el producto'}
+                        >
+                          Eliminar
+                        </ActionButton>
+                      </div>
                     </td>
                   </tr>
                 ))}

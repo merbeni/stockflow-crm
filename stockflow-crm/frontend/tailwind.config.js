@@ -36,6 +36,28 @@ export default {
           bg: 'var(--color-danger-bg)',
         },
         accent: 'var(--color-accent)',
+        // Acciones de fila: cada verbo tiene su color y siempre el mismo.
+        // Ver el bloque comentado en index.css para los ratios verificados.
+        'act-edit': {
+          bg: 'var(--color-act-edit-bg)',
+          border: 'var(--color-act-edit-border)',
+          text: 'var(--color-act-edit-text)',
+        },
+        'act-on': {
+          bg: 'var(--color-act-on-bg)',
+          border: 'var(--color-act-on-border)',
+          text: 'var(--color-act-on-text)',
+        },
+        'act-off': {
+          bg: 'var(--color-act-off-bg)',
+          border: 'var(--color-act-off-border)',
+          text: 'var(--color-act-off-text)',
+        },
+        'act-del': {
+          bg: 'var(--color-act-del-bg)',
+          border: 'var(--color-act-del-border)',
+          text: 'var(--color-act-del-text)',
+        },
         'conf-high-bg': 'var(--color-confidence-high-bg)',
         'conf-high-text': 'var(--color-confidence-high-text)',
         'conf-medium-bg': 'var(--color-confidence-medium-bg)',

@@ -25,6 +25,12 @@ class InvoiceItemSummary(BaseModel):
     unit_price: Decimal
     confidence: ConfidenceLevel
     supplier_sku: str | None
+    # Sin este campo la pantalla de trazabilidad mostraba «Sumada al stock» en
+    # las líneas que el usuario había omitido al confirmar la factura: el dato
+    # no viajaba y la interfaz lo interpretaba como no omitida. La línea no
+    # tocaba el stock, pero el detalle del movimiento decía lo contrario, que es
+    # justo donde se va a mirar para auditar qué pasó.
+    skipped: bool = False
 
     model_config = {"from_attributes": True}
 
