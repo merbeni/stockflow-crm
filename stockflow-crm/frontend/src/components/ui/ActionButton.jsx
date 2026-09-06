@@ -37,7 +37,8 @@ const TONOS = {
 TONOS.avanzar = TONOS.activar
 
 const BASE =
-  'inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-medium ' +
+  'inline-flex items-center justify-center rounded-md border px-2.5 py-1 ' +
+  'text-center text-xs font-medium ' +
   'transition hover:brightness-95 active:brightness-90 ' +
   'disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 ' +
   'disabled:text-gray-400 disabled:hover:brightness-100'

@@ -232,12 +232,18 @@ export default function Users() {
                           esUnoMismo ? 'border-l-4 border-row-self-accent' : ''
                         }`}
                       >
-                        {u.full_name ?? '—'}
-                        {esUnoMismo && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-row-self-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
-                            Tu cuenta
-                          </span>
-                        )}
+                        {/* Nombre y etiqueta van juntos en un contenedor propio:
+                            en una pantalla angosta la etiqueta baja de renglón,
+                            y separada por un margen quedaba indentada respecto
+                            del nombre en vez de alineada debajo. */}
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          {u.full_name ?? '—'}
+                          {esUnoMismo && (
+                            <span className="inline-flex items-center whitespace-nowrap rounded-full bg-row-self-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                              Tu cuenta
+                            </span>
+                          )}
+                        </span>
                       </td>
                       <td className={`px-4 py-3 text-tx-secondary ${celdaPropia}`}>{u.email}</td>
                       <td className={`px-4 py-3 text-tx-secondary ${celdaPropia}`}>

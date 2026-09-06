@@ -1,7 +1,8 @@
 import logging
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, status
-from google.genai.errors import ClientError, ServerError
+from google.genai.errors import APIError, ClientError, ServerError
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_org_id, get_current_user
@@ -14,6 +15,7 @@ from app.schemas.invoice import (
     InvoiceResponse,
 )
 from app.services.email_service import send_low_stock_alert
+from app.models.invoice import InvoiceStatus
 from app.services.invoice.gemini_service import (
     ALLOWED_MIME_TYPES,
     contenido_coincide_con_tipo,
@@ -24,9 +26,17 @@ from app.services.invoice.invoice_service import (
     list_invoices,
     process_invoice,
     reject_invoice,
+    sugerencias_de_factura,
 )
 
 logger = logging.getLogger(__name__)
+
+# Se muestra tal cual si el reintento automático del frontend vuelve a fallar,
+# así que está escrito para una persona y no como código interno.
+MENSAJE_SERVICIO_OCUPADO = (
+    "El servicio de lectura automática está recibiendo más pedidos de los que "
+    "puede atender. Esperá unos minutos y volvé a intentar."
+)
 
 router = APIRouter(
     prefix="/invoices",
@@ -38,8 +48,17 @@ _MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB
 _FORMATOS_LEGIBLES = "PDF, JPG, PNG o WEBP"
 
 
-def _invoice_to_response(invoice) -> InvoiceResponse:
-    return InvoiceResponse(
+def _invoice_to_response(invoice, db: Session = None, org_id: int = None) -> InvoiceResponse:
+    """
+    Arma la respuesta de una factura.
+
+    En las que siguen pendientes se recalcula el emparejado automático: la
+    pantalla invita a dejar la revisión para después, y sin esto volver más
+    tarde significaba encontrar todas las líneas en blanco y rehacer a mano lo
+    que el sistema ya había resuelto. En las confirmadas o rechazadas no
+    corresponde: la decisión ya está tomada.
+    """
+    respuesta = InvoiceResponse(
         id=invoice.id,
         supplier_id=invoice.supplier_id,
         supplier_name=invoice.supplier.name if invoice.supplier else None,
@@ -49,6 +68,17 @@ def _invoice_to_response(invoice) -> InvoiceResponse:
         created_at=invoice.created_at,
         items=invoice.items,
     )
+    if db is None or invoice.status != InvoiceStatus.pending:
+        return respuesta
+
+    sugerencias, skus = sugerencias_de_factura(db, invoice, org_id)
+    respuesta.supplier_product_skus = skus
+    for item in respuesta.items:
+        producto_id, producto_nombre, sku = sugerencias.get(item.id, (None, None, None))
+        item.suggested_product_id = producto_id
+        item.suggested_product_name = producto_nombre
+        item.suggested_supplier_sku = sku
+    return respuesta
 
 
 @router.post("/process", response_model=InvoiceProcessResponse, status_code=status.HTTP_201_CREATED)
@@ -88,8 +118,11 @@ async def process(
         return process_invoice(db, file_bytes, file.content_type, org_id)
     except ServerError as exc:
         if exc.code == 503:
+            # El 503 es la señal de "volvé a intentar": el frontend reintenta
+            # solo al recibirlo. El mensaje igual tiene que estar escrito para
+            # una persona, porque es lo que se muestra si el reintento falla.
             raise DomainError(
-                "gemini_unavailable",
+                MENSAJE_SERVICIO_OCUPADO,
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         logger.exception("Error al comunicarse con Gemini")
@@ -108,7 +141,7 @@ async def process(
             # así que se reusa ese código y el frontend reintenta solo.
             logger.warning("Cuota de Gemini agotada")
             raise DomainError(
-                "gemini_unavailable",
+                MENSAJE_SERVICIO_OCUPADO,
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         if exc.code in (400, 422):
@@ -127,6 +160,17 @@ async def process(
             "El servicio de lectura automática no está disponible en este "
             "momento. Intentá de nuevo en unos minutos.",
             status_code=status.HTTP_502_BAD_GATEWAY,
+        )
+    except (httpx.TransportError, APIError) as exc:
+        # Un corte de red camino a Google, un tiempo de espera agotado o
+        # cualquier fallo de transporte no son ni ServerError ni ClientError: se
+        # escapaban de los bloques de arriba y llegaban al usuario como un 500
+        # genérico. Es el mismo caso de "volvé a intentar" que el 503, así que
+        # se responde igual y el frontend reintenta solo.
+        logger.warning("Fallo de conexión con Gemini: %s", exc)
+        raise DomainError(
+            MENSAJE_SERVICIO_OCUPADO,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     except ValueError as exc:
         # El texto original puede incluir la respuesta cruda del modelo: al log.
@@ -176,6 +220,9 @@ def reject(
 def get_all(
     org_id: int = Depends(get_current_org_id), db: Session = Depends(get_db)
 ):
+    # Sin `db`: el listado no calcula sugerencias. Hacerlo obligaría a consultar
+    # la base por cada línea de cada factura pendiente, y solo hacen falta al
+    # abrir una para revisarla.
     return [_invoice_to_response(inv) for inv in list_invoices(db, org_id)]
 
 
@@ -188,4 +235,4 @@ def get_one(
     invoice = get_invoice(db, invoice_id, org_id)
     if not invoice:
         raise NotFoundError("No encontramos esa factura.")
-    return _invoice_to_response(invoice)
+    return _invoice_to_response(invoice, db, org_id)

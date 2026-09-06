@@ -196,16 +196,25 @@ export default function Orders() {
               key={o.id}
               className="rounded-xl border border-brand-border bg-surface p-5 shadow"
             >
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-3">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+                {/* Identidad del pedido a la izquierda y acciones a la derecha.
+                    El nombre del cliente estaba suelto entre los botones, sin
+                    nada que dijera qué era ese texto. */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span className="font-semibold text-tx-primary">Pedido n.º {o.id}</span>
                   <Badge value={o.status} />
                   <span className="text-xs text-tx-muted">
                     {new Date(o.created_at).toLocaleDateString()}
                   </span>
+                  <span className="text-sm text-tx-secondary">
+                    <span className="text-tx-muted">Cliente: </span>
+                    {o.customer_name}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-tx-secondary">{o.customer_name}</span>
+                {/* `items-stretch`: si una etiqueta larga parte en dos renglones,
+                    los botones de al lado la acompañan en altura en vez de
+                    quedar chicos al costado. */}
+                <div className="flex flex-wrap items-stretch justify-end gap-2">
                   {SIGUIENTE_ESTADO[o.status] && (
                     <ActionButton tono="avanzar" onClick={() => handleAdvance(o)}>
                       Marcar como {SIGUIENTE_ESTADO[o.status]}

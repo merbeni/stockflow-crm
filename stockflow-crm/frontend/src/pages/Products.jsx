@@ -13,6 +13,7 @@ import {
   sku as validarSku,
   validarFormulario,
 } from '../utils/validation'
+import { soloLoCambiado } from '../utils/formulario'
 
 const VACIO = {
   sku: '',
@@ -43,6 +44,8 @@ export default function Products() {
   const [products, setProducts] = useState([])
   const [modal, setModal] = useState(null) // null | 'create' | producto
   const [form, setForm] = useState(VACIO)
+  // Cómo estaba el formulario al abrirlo, para saber qué se editó.
+  const [formOriginal, setFormOriginal] = useState(null)
   const [errores, setErrores] = useState({})
   const [error, setError] = useState('')
   const [errorGeneral, setErrorGeneral] = useState('')
@@ -68,6 +71,7 @@ export default function Products() {
 
   function openCreate() {
     setForm(VACIO)
+    setFormOriginal(null)
     setErrores({})
     setError('')
     setModal('create')
@@ -75,6 +79,15 @@ export default function Products() {
 
   function openEdit(p) {
     setForm({
+      sku: p.sku,
+      name: p.name,
+      description: p.description ?? '',
+      price: p.price,
+      current_stock: p.current_stock,
+      minimum_stock: p.minimum_stock,
+      allow_decimal_stock: p.allow_decimal_stock ?? false,
+    })
+    setFormOriginal({
       sku: p.sku,
       name: p.name,
       description: p.description ?? '',
@@ -137,7 +150,9 @@ export default function Products() {
       if (modal === 'create') {
         await client.post('/products', body)
       } else {
-        await client.put(`/products/${modal.id}`, body)
+        // Solo lo editado: mandar el registro entero pisaba en silencio los
+        // cambios que otra persona hubiera guardado mientras tanto.
+        await client.put(`/products/${modal.id}`, soloLoCambiado(body, formOriginal))
       }
       setModal(null)
       load()

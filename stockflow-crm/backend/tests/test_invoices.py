@@ -164,6 +164,56 @@ class TestProcessInvoice:
             headers=auth_headers,
         )
         assert resp.status_code == 503
+        # El 503 le dice al frontend que reintente, pero el mensaje se muestra
+        # tal cual si el reintento vuelve a fallar: acá viajaba el identificador
+        # interno «gemini_unavailable» y era lo que terminaba leyendo la persona.
+        detalle = resp.json()["detail"]
+        assert "_" not in detalle
+        assert "lectura automática" in detalle
+
+    def test_un_corte_de_red_no_se_reporta_como_falla_del_sistema(
+        self, client, auth_headers, mocker
+    ):
+        """
+        Un fallo de transporte no es ni ServerError ni ClientError.
+
+        Se escapaba de los dos bloques que atrapan los errores de Gemini y
+        llegaba al usuario como un 500: la conexión con Google se había cortado
+        —cosa que se arregla reintentando— y el sistema decía haberse roto.
+        """
+        import httpx
+
+        mocker.patch(
+            "app.services.invoice.invoice_service.process_invoice_file",
+            side_effect=httpx.ReadError("connection aborted"),
+        )
+        resp = client.post(
+            "/invoices/process",
+            files={"file": ("invoice.pdf", _PDF_VALIDO, "application/pdf")},
+            headers=auth_headers,
+        )
+        # 503 y no 500: es el código con el que el frontend reintenta solo.
+        assert resp.status_code == 503
+        detalle = resp.json()["detail"]
+        assert "lectura automática" in detalle
+        # El detalle técnico queda en el log, no en la pantalla.
+        assert "connection aborted" not in detalle
+
+    def test_un_tiempo_de_espera_agotado_recibe_el_mismo_trato(
+        self, client, auth_headers, mocker
+    ):
+        import httpx
+
+        mocker.patch(
+            "app.services.invoice.invoice_service.process_invoice_file",
+            side_effect=httpx.ReadTimeout("timed out"),
+        )
+        resp = client.post(
+            "/invoices/process",
+            files={"file": ("invoice.pdf", _PDF_VALIDO, "application/pdf")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 503
 
     def test_credenciales_mal_configuradas_no_culpan_al_usuario(
         self, client, auth_headers, mocker
@@ -591,3 +641,61 @@ class TestAislamientoDeFacturas:
         assert resp.status_code == 201
         for item in resp.json()["items"]:
             assert item["suggested_product_id"] is None
+
+
+class TestRetomarUnaRevision:
+    """
+    La pantalla de revisión invita a dejarla para después («la factura queda
+    pendiente hasta que la confirmes»). El emparejado automático se calculaba
+    solo al procesar y viajaba únicamente en esa respuesta: quien volvía más
+    tarde encontraba todas las líneas en blanco y tenía que rehacer a mano lo
+    que el sistema ya había resuelto.
+    """
+
+    def test_la_factura_pendiente_conserva_las_sugerencias(
+        self, client, auth_headers, mocker, make_product
+    ):
+        make_product(sku="BW-001", name="Blue Widget", current_stock="0.000")
+        procesada = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = procesada.json()["invoice_id"]
+        sugerido_al_procesar = procesada.json()["items"][0]["suggested_product_id"]
+        assert sugerido_al_procesar is not None
+
+        # Se vuelve más tarde, releyendo la factura guardada.
+        resp = client.get(f"/invoices/{invoice_id}", headers=auth_headers)
+        assert resp.status_code == 200
+        item = resp.json()["items"][0]
+        assert item["suggested_product_id"] == sugerido_al_procesar
+        assert item["suggested_product_name"] == "Blue Widget"
+
+    def test_el_listado_no_las_calcula(
+        self, client, auth_headers, mocker, make_product
+    ):
+        """
+        El listado se mantiene barato.
+
+        Calcular las sugerencias ahí obligaría a consultar la base por cada
+        línea de cada factura pendiente, y solo hacen falta al abrir una para
+        revisarla: la pantalla vuelve a pedir esa factura en ese momento.
+        """
+        make_product(sku="BW-001", name="Blue Widget", current_stock="0.000")
+        _upload_invoice(client, auth_headers, mocker)
+
+        facturas = client.get("/invoices", headers=auth_headers).json()
+        assert facturas[0]["items"][0]["suggested_product_id"] is None
+
+    def test_una_factura_ya_confirmada_no_sugiere_nada(
+        self, client, auth_headers, mocker, make_product
+    ):
+        """La decisión ya está tomada: sugerir ahí solo confundiría."""
+        product = make_product(sku="BW-001", name="Blue Widget", current_stock="0.000")
+        procesada = _upload_invoice(client, auth_headers, mocker)
+        invoice_id = procesada.json()["invoice_id"]
+        items = procesada.json()["items"]
+        client.post(f"/invoices/{invoice_id}/confirm", json={"items": [
+            {"invoice_item_id": items[0]["id"], "product_id": product["id"]},
+            {"invoice_item_id": items[1]["id"], "skip": True},
+        ]}, headers=auth_headers)
+
+        resp = client.get(f"/invoices/{invoice_id}", headers=auth_headers)
+        assert all(i["suggested_product_id"] is None for i in resp.json()["items"])

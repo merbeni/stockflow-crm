@@ -65,6 +65,78 @@ def _fallback_match_product(
 
 # ── process (upload + Gemini) ─────────────────────────────────────────────────
 
+def mapa_skus_del_proveedor(db: Session, supplier_id: int | None) -> dict[int, str]:
+    """
+    product_id → SKU con el que ese proveedor identifica al producto.
+
+    Sirve para completar solo el campo «SKU del proveedor» cuando se elige un
+    producto. Se descartan los mapeos cuyo SKU es igual al nombre del producto:
+    son datos viejos que no aportan nada.
+    """
+    if not supplier_id:
+        return {}
+    mapeos = (
+        db.query(ProductSupplierMapping)
+        .options(joinedload(ProductSupplierMapping.product))
+        .filter(ProductSupplierMapping.supplier_id == supplier_id)
+        .all()
+    )
+    return {
+        m.product_id: m.supplier_sku
+        for m in mapeos
+        if m.supplier_sku.lower() != m.product.name.lower()
+    }
+
+
+def sugerencia_para_linea(
+    db: Session,
+    descripcion: str,
+    supplier_id: int | None,
+    organization_id: int,
+    skus_del_proveedor: dict[int, str],
+) -> tuple[int | None, str | None, str | None]:
+    """
+    Producto que probablemente corresponda a una línea leída de la factura.
+
+    Primero busca un mapeo guardado de ese proveedor —lo que ya se decidió en
+    facturas anteriores— y si no hay, prueba por SKU o nombre del producto.
+    """
+    mapping = _auto_match_product(db, supplier_id, descripcion)
+    if mapping:
+        return (
+            mapping.product_id,
+            mapping.product.name,
+            skus_del_proveedor.get(mapping.product_id),
+        )
+    product = _fallback_match_product(db, descripcion, organization_id)
+    if not product:
+        return None, None, None
+    return product.id, product.name, skus_del_proveedor.get(product.id)
+
+
+def sugerencias_de_factura(
+    db: Session, invoice: Invoice, organization_id: int
+) -> tuple[dict[int, tuple[int | None, str | None, str | None]], dict[int, str]]:
+    """
+    Rehace las sugerencias de una factura pendiente, para retomar la revisión.
+
+    El emparejado automático se calculaba al procesar y solo viajaba en esa
+    respuesta: quien cerraba la revisión y volvía más tarde —algo que la propia
+    pantalla ofrece hacer— se encontraba con todas las líneas en blanco y tenía
+    que rehacer a mano lo que el sistema ya había resuelto.
+    """
+    skus = mapa_skus_del_proveedor(db, invoice.supplier_id)
+    return (
+        {
+            item.id: sugerencia_para_linea(
+                db, item.description, invoice.supplier_id, organization_id, skus
+            )
+            for item in invoice.items
+        },
+        skus,
+    )
+
+
 def process_invoice(
     db: Session, file_bytes: bytes, mime_type: str, organization_id: int
 ) -> InvoiceProcessResponse:
@@ -112,22 +184,7 @@ def process_invoice(
     db.add(invoice)
     db.flush()  # get invoice.id before committing
 
-    # Build a full product_id → supplier_sku map for the detected supplier so the
-    # frontend can auto-fill the Supplier SKU field for any product the user picks.
-    supplier_product_skus: dict[int, str] = {}
-    if invoice.supplier_id:
-        all_mappings = (
-            db.query(ProductSupplierMapping)
-            .options(joinedload(ProductSupplierMapping.product))
-            .filter(ProductSupplierMapping.supplier_id == invoice.supplier_id)
-            .all()
-        )
-        # Exclude mappings where supplier_sku is just the product name (bad data guard).
-        supplier_product_skus = {
-            m.product_id: m.supplier_sku
-            for m in all_mappings
-            if m.supplier_sku.lower() != m.product.name.lower()
-        }
+    supplier_product_skus = mapa_skus_del_proveedor(db, invoice.supplier_id)
 
     processed_items: list[InvoiceItemProcessed] = []
     for raw in raw_items:
@@ -146,19 +203,10 @@ def process_invoice(
         db.add(item)
         db.flush()
 
-        mapping = _auto_match_product(db, invoice.supplier_id, item.description)
-        if mapping:
-            s_product_id   = mapping.product_id
-            s_product_name = mapping.product.name
-            s_supplier_sku = supplier_product_skus.get(mapping.product_id)
-        else:
-            # Fallback: match by product SKU or name (partial, case-insensitive).
-            product = _fallback_match_product(db, item.description, organization_id)
-            s_product_id   = product.id   if product else None
-            s_product_name = product.name if product else None
-            # Re-use the supplier_product_skus map (already built above) to fill
-            # in the supplier SKU if this product was previously mapped to the supplier.
-            s_supplier_sku = supplier_product_skus.get(product.id) if product else None
+        s_product_id, s_product_name, s_supplier_sku = sugerencia_para_linea(
+            db, item.description, invoice.supplier_id, organization_id,
+            supplier_product_skus,
+        )
 
         processed_items.append(
             InvoiceItemProcessed(

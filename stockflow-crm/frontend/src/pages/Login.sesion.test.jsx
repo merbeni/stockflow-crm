@@ -34,6 +34,11 @@ function montar(ruta, login = vi.fn()) {
 
 const AVISO = /sesión se cerró por inactividad/i
 
+// Sin `delay: null`, userEvent espera entre tecla y tecla: con la máquina
+// cargada, escribir correo y contraseña más la navegación posterior rozaba el
+// límite de espera y la prueba fallaba de a ratos. Acá lo que se verifica es a
+// dónde lleva el ingreso, no la velocidad de tipeo.
+
 describe('Aviso de sesión vencida', () => {
   it('explica por qué apareció el login', () => {
     montar('/login?expirada=1&volver=%2Fstock-movements')
@@ -46,7 +51,7 @@ describe('Aviso de sesión vencida', () => {
   })
 
   it('devuelve a la pantalla donde estaba trabajando', async () => {
-    const usuario = userEvent.setup()
+    const usuario = userEvent.setup({ delay: null })
     montar('/login?expirada=1&volver=%2Fstock-movements')
 
     await usuario.type(screen.getByLabelText(/correo/i), 'ana@test.com')
@@ -62,7 +67,7 @@ describe('Aviso de sesión vencida', () => {
     // Un `volver` con una URL completa sería un redirect abierto: bastaría
     // mandarle a alguien un enlace al login propio para dejarlo, después de
     // entrar, en un sitio ajeno con aspecto de ser el sistema.
-    const usuario = userEvent.setup()
+    const usuario = userEvent.setup({ delay: null })
     montar('/login?expirada=1&volver=https%3A%2F%2Fsitio-ajeno.example')
 
     await usuario.type(screen.getByLabelText(/correo/i), 'ana@test.com')
@@ -75,7 +80,7 @@ describe('Aviso de sesión vencida', () => {
   })
 
   it('tampoco sigue un destino con doble barra, que el navegador lee como otro dominio', async () => {
-    const usuario = userEvent.setup()
+    const usuario = userEvent.setup({ delay: null })
     montar('/login?expirada=1&volver=%2F%2Fsitio-ajeno.example')
 
     await usuario.type(screen.getByLabelText(/correo/i), 'ana@test.com')

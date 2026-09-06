@@ -98,6 +98,11 @@ class InvoiceItemResponse(BaseModel):
     confidence: ConfidenceLevel
     supplier_sku: str | None
     skipped: bool = False
+    # Se recalculan al leer una factura pendiente para poder retomar la
+    # revisión sin perder el emparejado automático.
+    suggested_product_id: int | None = None
+    suggested_product_name: str | None = None
+    suggested_supplier_sku: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -111,5 +116,7 @@ class InvoiceResponse(BaseModel):
     status: InvoiceStatus
     created_at: datetime
     items: list[InvoiceItemResponse]
+    # product_id → SKU del proveedor, igual que en la respuesta del procesado.
+    supplier_product_skus: dict[int, str] = {}
 
     model_config = {"from_attributes": True}

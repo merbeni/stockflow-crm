@@ -101,9 +101,12 @@ function UploadStep({ onProcessed, onCancel }) {
       const data = await sendRequest(form)
       onProcessed(data)
     } catch (firstErr) {
-      const geminiCaido =
-        firstErr.response?.status === 503 &&
-        firstErr.response?.data?.detail === 'gemini_unavailable'
+      // El 503 es el único caso de "volvé a intentar" que devuelve la API, así
+      // que alcanza con el código. Antes se comparaba además contra el texto
+      // «gemini_unavailable», y ese token era lo que el backend mandaba como
+      // mensaje: si el reintento también fallaba, la persona terminaba leyendo
+      // el identificador interno en pantalla.
+      const geminiCaido = firstErr.response?.status === 503
 
       if (!geminiCaido) {
         // Acá aparece el aviso cuando el archivo no es una factura: el backend
@@ -902,9 +905,20 @@ export default function Invoices() {
     load()
   }
 
-  function resumeReview(inv) {
+  async function resumeReview(fila) {
     // Se reconstruye un objeto equivalente al del procesamiento a partir de la
-    // factura guardada, para poder retomar una revisión pendiente.
+    // factura guardada, para poder retomar una revisión pendiente. Se la vuelve
+    // a pedir de a una porque es ahí donde el backend recalcula el emparejado
+    // automático: antes se descartaba y volver más tarde obligaba a rehacer a
+    // mano lo que el sistema ya había resuelto. Si la consulta falla se sigue
+    // con lo que ya está en pantalla, que es preferible a no poder revisar.
+    let inv = fila
+    try {
+      const { data } = await client.get(`/invoices/${fila.id}`)
+      inv = data
+    } catch {
+      inv = fila
+    }
     setProcessed({
       invoice_id: inv.id,
       supplier: inv.supplier_name ?? null,
@@ -916,10 +930,11 @@ export default function Invoices() {
         quantity: item.quantity,
         unit_price: item.unit_price,
         confidence: item.confidence,
-        suggested_product_id: null,
-        suggested_product_name: null,
+        suggested_product_id: item.suggested_product_id ?? null,
+        suggested_product_name: item.suggested_product_name ?? null,
+        suggested_supplier_sku: item.suggested_supplier_sku ?? null,
       })),
-      supplier_product_skus: {},
+      supplier_product_skus: inv.supplier_product_skus ?? {},
     })
     setStep('review')
   }

@@ -13,6 +13,7 @@ import {
   telefono,
   validarFormulario,
 } from '../utils/validation'
+import { soloLoCambiado } from '../utils/formulario'
 
 const VACIO = { name: '', email: '', phone: '', address: '' }
 
@@ -33,6 +34,8 @@ export default function Customers() {
   const [customers, setCustomers] = useState([])
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(VACIO)
+  // Cómo estaba el formulario al abrirlo, para saber qué se editó.
+  const [formOriginal, setFormOriginal] = useState(null)
   const [errores, setErrores] = useState({})
   const [error, setError] = useState('')
   const [errorGeneral, setErrorGeneral] = useState('')
@@ -59,6 +62,7 @@ export default function Customers() {
 
   function openCreate() {
     setForm(VACIO)
+    setFormOriginal(null)
     setErrores({})
     setError('')
     setModal('create')
@@ -66,6 +70,12 @@ export default function Customers() {
 
   function openEdit(c) {
     setForm({
+      name: c.name,
+      email: c.email ?? '',
+      phone: c.phone ?? '',
+      address: c.address ?? '',
+    })
+    setFormOriginal({
       name: c.name,
       email: c.email ?? '',
       phone: c.phone ?? '',
@@ -100,7 +110,9 @@ export default function Customers() {
       if (modal === 'create') {
         await client.post('/customers', body)
       } else {
-        await client.put(`/customers/${modal.id}`, body)
+        // Solo lo editado: mandar el registro entero pisaba en silencio los
+        // cambios que otra persona hubiera guardado mientras tanto.
+        await client.put(`/customers/${modal.id}`, soloLoCambiado(body, formOriginal))
       }
       setModal(null)
       load()
