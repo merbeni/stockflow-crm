@@ -67,7 +67,7 @@ export default function VerifyEmail() {
         {estado === 'error' && (
           <>
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-              <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="h-6 w-6 text-danger" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
@@ -77,7 +77,7 @@ export default function VerifyEmail() {
             <p className="mb-6 text-sm text-tx-secondary">{mensaje}</p>
             <Link
               to="/login"
-              className="inline-block rounded-lg border border-gray-300 px-5 py-2 text-sm hover:bg-sidebar"
+              className="inline-block rounded-lg border border-input-border px-5 py-2 text-sm hover:bg-sidebar"
             >
               Volver al inicio de sesión
             </Link>

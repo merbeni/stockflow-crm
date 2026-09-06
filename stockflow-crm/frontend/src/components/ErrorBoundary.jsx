@@ -50,7 +50,7 @@ export default class ErrorBoundary extends Component {
               onClick={() => {
                 window.location.href = '/'
               }}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm hover:bg-sidebar"
+              className="rounded-lg border border-input-border px-4 py-2 text-sm hover:bg-sidebar"
             >
               Ir al inicio
             </button>

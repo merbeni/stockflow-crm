@@ -165,7 +165,7 @@ function UploadStep({ onProcessed, onCancel }) {
               <button
                 type="button"
                 onClick={() => pickFile(null)}
-                className="ml-3 shrink-0 text-xs text-red-500 hover:underline"
+                className="ml-3 shrink-0 text-xs text-danger hover:underline"
               >
                 Quitar
               </button>
@@ -175,7 +175,7 @@ function UploadStep({ onProcessed, onCancel }) {
 
         {retrying && (
           <div className="flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-            <svg className="h-4 w-4 shrink-0 animate-spin text-amber-500" fill="none" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 shrink-0 animate-spin text-warning" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
             </svg>
@@ -451,14 +451,14 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
           <button
             onClick={onBack}
             disabled={submitting}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
+            className="rounded-lg border border-input-border px-3 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
           >
             ← Volver
           </button>
           <button
             onClick={handleReject}
             disabled={submitting}
-            className="rounded-lg border border-red-300 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+            className="rounded-lg border border-red-300 px-3 py-1.5 text-sm text-danger hover:bg-red-50 disabled:opacity-50"
           >
             Rechazar
           </button>
@@ -498,7 +498,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
             onFocus={() => setSupplierDropdownOpen(true)}
             onBlur={() => setTimeout(() => setSupplierDropdownOpen(false), 150)}
             placeholder="Escribí para buscar o crear…"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full rounded-lg border border-input-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
           />
           {supplierDropdownOpen && (
             <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-brand-border bg-surface shadow-lg">
@@ -524,18 +524,18 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
 
         <p className="mt-1.5 text-xs">
           {selectedSupplier ? (
-            <span className="text-green-600">
+            <span className="text-success">
               Proveedor existente seleccionado
               <button
                 type="button"
                 onClick={clearSupplier}
-                className="ml-2 text-tx-muted hover:text-red-500"
+                className="ml-2 text-tx-muted hover:text-danger"
               >
                 ✕ quitar
               </button>
             </span>
           ) : supplierQuery.trim() ? (
-            <span className="text-amber-600">
+            <span className="text-warning">
               Proveedor nuevo — completá los datos antes de confirmar
             </span>
           ) : (
@@ -546,7 +546,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
         {esProveedorNuevo && (
           <div className="mt-3 grid grid-cols-1 gap-2 border-t border-brand-border pt-3">
             <p className="mb-1 text-xs font-medium text-tx-secondary">
-              Datos del proveedor nuevo <span className="text-red-500">*</span>
+              Datos del proveedor nuevo <span className="text-danger">*</span>
             </p>
             {[
               { key: 'contact_name', label: 'Nombre de contacto', required: true, type: 'text' },
@@ -556,7 +556,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
               <div key={key} className="flex items-start gap-3">
                 <label className="w-28 shrink-0 pt-2 text-xs text-tx-muted">
                   {label}
-                  {required && <span className="ml-0.5 text-red-500">*</span>}
+                  {required && <span className="ml-0.5 text-danger">*</span>}
                 </label>
                 <div className="flex-1">
                   <input
@@ -568,13 +568,13 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                     aria-invalid={Boolean(erroresProveedor[key])}
                     className={`w-full rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 ${
                       erroresProveedor[key]
-                        ? 'border-red-400 focus:ring-red-400'
-                        : 'border-gray-300 focus:ring-primary'
+                        ? 'border-danger focus:ring-red-400'
+                        : 'border-input-border focus:ring-secondary'
                     }`}
                     placeholder={required ? 'Obligatorio' : 'Opcional'}
                   />
                   {erroresProveedor[key] && (
-                    <p className="mt-1 text-xs text-red-600">{erroresProveedor[key]}</p>
+                    <p className="mt-1 text-xs text-danger">{erroresProveedor[key]}</p>
                   )}
                 </div>
               </div>
@@ -642,7 +642,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                         type="text"
                         value={state.description}
                         onChange={(e) => setItem(idx, { description: e.target.value })}
-                        className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded border border-input-border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-secondary"
                       />
                     </div>
                     <div>
@@ -653,7 +653,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                         min="0"
                         value={state.quantity}
                         onChange={(e) => setItem(idx, { quantity: e.target.value })}
-                        className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded border border-input-border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-secondary"
                       />
                     </div>
                     <div>
@@ -664,7 +664,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                         min="0"
                         value={state.unit_price}
                         onChange={(e) => setItem(idx, { unit_price: e.target.value })}
-                        className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="w-full rounded border border-input-border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-secondary"
                       />
                     </div>
                   </div>
@@ -686,7 +686,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                         }}
                         className={`flex-1 rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 ${
                           state.product_id
-                            ? 'border-gray-300 focus:ring-primary'
+                            ? 'border-input-border focus:ring-secondary'
                             : 'border-amber-400 focus:ring-amber-300'
                         }`}
                       >
@@ -724,7 +724,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                         <div key={key}>
                           <label className="mb-0.5 block text-xs text-tx-muted">
                             {label}
-                            {required && <span className="ml-0.5 text-red-500">*</span>}
+                            {required && <span className="ml-0.5 text-danger">*</span>}
                           </label>
                           <input
                             type={type}
@@ -735,7 +735,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                                 new_product: { ...state.new_product, [key]: e.target.value },
                               })
                             }
-                            className="w-full rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            className="w-full rounded border border-input-border px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-secondary"
                           />
                         </div>
                       ))}
@@ -765,7 +765,7 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                       placeholder="Opcional — sirve para auto-completar próximas facturas"
                       value={state.supplier_sku}
                       onChange={(e) => setItem(idx, { supplier_sku: e.target.value })}
-                      className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="flex-1 rounded-lg border border-input-border px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-secondary"
                     />
                   </div>
                 </div>
@@ -917,7 +917,7 @@ export default function Invoices() {
                       {inv.status === 'pending' && (
                         <button
                           onClick={() => resumeReview(inv)}
-                          className="text-xs font-medium text-amber-600 hover:underline"
+                          className="text-xs font-medium text-warning hover:underline"
                         >
                           Revisar
                         </button>

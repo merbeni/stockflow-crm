@@ -213,7 +213,7 @@ export default function Products() {
                     <td className="px-4 py-3 font-medium text-tx-primary">
                       {p.name}
                       {p.low_stock && p.is_active && (
-                        <span className="ml-2 text-xs font-normal text-red-500">stock bajo</span>
+                        <span className="ml-2 text-xs font-normal text-danger">stock bajo</span>
                       )}
                       {!p.is_active && (
                         <span className="ml-2 text-xs font-normal text-tx-muted">inactivo</span>
@@ -241,7 +241,7 @@ export default function Products() {
                       <button
                         onClick={() => handleToggleActive(p)}
                         className={`text-xs hover:underline ${
-                          p.is_active ? 'text-amber-500' : 'text-green-600'
+                          p.is_active ? 'text-warning' : 'text-success'
                         }`}
                       >
                         {p.is_active ? 'Desactivar' : 'Activar'}
@@ -253,7 +253,7 @@ export default function Products() {
                         onClick={() => handleDelete(p)}
                         disabled={p.can_delete === false}
                         title={p.delete_blocked_reason ?? 'Eliminar el producto'}
-                        className="text-xs text-red-500 hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
+                        className="text-xs text-danger hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline"
                       >
                         Eliminar
                       </button>
@@ -326,7 +326,7 @@ export default function Products() {
             />
 
             <FormField name="allow_decimal_stock" label="Unidad de medida">
-              <label className="flex items-start gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm">
+              <label className="flex items-start gap-2 rounded-lg border border-input-border px-3 py-2 text-sm">
                 <input
                   id="campo-allow_decimal_stock"
                   type="checkbox"
@@ -377,7 +377,7 @@ export default function Products() {
                 type="button"
                 onClick={() => setModal(null)}
                 disabled={saving}
-                className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
+                className="rounded-lg border border-input-border px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
               >
                 Cancelar
               </button>

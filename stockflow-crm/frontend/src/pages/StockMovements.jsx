@@ -71,7 +71,7 @@ export default function StockMovements() {
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
           aria-label="Filtrar por tipo"
-          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          className="rounded-lg border border-input-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
         >
           <option value="">Todos los tipos</option>
           <option value="entry">Entrada</option>
@@ -88,8 +88,8 @@ export default function StockMovements() {
             onChange={(e) => setDateFrom(e.target.value)}
             className={`rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 ${
               rangoInvertido
-                ? 'border-red-400 focus:ring-red-300'
-                : 'border-gray-300 focus:ring-primary'
+                ? 'border-danger focus:ring-danger'
+                : 'border-input-border focus:ring-secondary'
             }`}
           />
         </label>
@@ -103,8 +103,8 @@ export default function StockMovements() {
             onChange={(e) => setDateTo(e.target.value)}
             className={`rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 ${
               rangoInvertido
-                ? 'border-red-400 focus:ring-red-300'
-                : 'border-gray-300 focus:ring-primary'
+                ? 'border-danger focus:ring-danger'
+                : 'border-input-border focus:ring-secondary'
             }`}
           />
         </label>
@@ -124,7 +124,7 @@ export default function StockMovements() {
       </div>
 
       {rangoInvertido && (
-        <p role="alert" className="mb-4 text-xs text-red-600">
+        <p role="alert" className="mb-4 text-xs text-danger">
           La fecha «desde» no puede ser posterior a la fecha «hasta». Corregí el
           rango para ver los resultados.
         </p>
@@ -165,7 +165,7 @@ export default function StockMovements() {
                       {m.type === 'adjustment' ? (
                         <span
                           className={
-                            parseFloat(m.quantity) >= 0 ? 'text-green-600' : 'text-red-500'
+                            parseFloat(m.quantity) >= 0 ? 'text-success' : 'text-danger'
                           }
                         >
                           {parseFloat(m.quantity) >= 0 ? '+' : ''}
@@ -233,8 +233,8 @@ export default function StockMovements() {
                     <span
                       className={
                         parseFloat(detail.quantity) >= 0
-                          ? 'font-medium text-green-600'
-                          : 'font-medium text-red-500'
+                          ? 'font-medium text-success'
+                          : 'font-medium text-danger'
                       }
                     >
                       {parseFloat(detail.quantity) >= 0 ? '+' : ''}

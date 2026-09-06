@@ -21,6 +21,21 @@ export default {
         'tx-primary': 'var(--color-text-primary)',
         'tx-secondary': 'var(--color-text-secondary)',
         'tx-muted': 'var(--color-text-muted)',
+        'input-border': 'var(--color-input-border)',
+        // Semánticos: todos verificados con contraste AA sobre fondo claro.
+        success: {
+          DEFAULT: 'var(--color-success)',
+          bg: 'var(--color-success-bg)',
+        },
+        warning: {
+          DEFAULT: 'var(--color-warning)',
+          bg: 'var(--color-warning-bg)',
+        },
+        danger: {
+          DEFAULT: 'var(--color-danger)',
+          bg: 'var(--color-danger-bg)',
+        },
+        accent: 'var(--color-accent)',
         'conf-high-bg': 'var(--color-confidence-high-bg)',
         'conf-high-text': 'var(--color-confidence-high-text)',
         'conf-medium-bg': 'var(--color-confidence-medium-bg)',

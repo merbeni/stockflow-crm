@@ -64,7 +64,7 @@ function SidebarContent({ user, organizacion, isAdmin, onLogout, onClose }) {
         </p>
         <button
           onClick={onLogout}
-          className="w-full text-left text-xs font-medium text-red-500 hover:text-red-700"
+          className="w-full text-left text-xs font-medium text-tx-secondary underline-offset-2 hover:text-primary-text hover:underline"
         >
           Cerrar sesión
         </button>

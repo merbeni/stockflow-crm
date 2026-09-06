@@ -18,7 +18,7 @@ export default function ErrorBanner({ message, onDismiss, className = '' }) {
       className={`flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 ${className}`}
     >
       <svg
-        className="mt-0.5 h-4 w-4 shrink-0 text-red-500"
+        className="mt-0.5 h-4 w-4 shrink-0 text-danger"
         fill="none"
         stroke="currentColor"
         strokeWidth={2}
@@ -37,7 +37,7 @@ export default function ErrorBanner({ message, onDismiss, className = '' }) {
           type="button"
           onClick={onDismiss}
           aria-label="Cerrar aviso"
-          className="shrink-0 text-lg leading-none text-red-400 hover:text-red-600"
+          className="shrink-0 text-lg leading-none text-danger hover:text-danger"
         >
           &times;
         </button>

@@ -212,7 +212,7 @@ export default function Orders() {
                       </button>
                       <button
                         onClick={() => handleDelete(o)}
-                        className="text-xs text-red-500 hover:underline"
+                        className="text-xs text-danger hover:underline"
                       >
                         Eliminar
                       </button>
@@ -252,7 +252,7 @@ export default function Orders() {
                             {o.status === 'pending' && (
                               <button
                                 onClick={() => handleRemoveItem(o.id, i.id)}
-                                className="text-xs text-red-400 hover:text-red-600"
+                                className="text-xs text-danger hover:text-danger"
                               >
                                 Quitar
                               </button>
@@ -286,7 +286,7 @@ export default function Orders() {
                 required
                 value={customerId}
                 onChange={(e) => setCustomerId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-input-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
               >
                 <option value="">Elegí un cliente…</option>
                 {customers.map((c) => (
@@ -300,7 +300,7 @@ export default function Orders() {
               <button
                 type="button"
                 onClick={() => setCreateModal(false)}
-                className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm hover:bg-sidebar"
+                className="rounded-lg border border-input-border px-4 py-1.5 text-sm hover:bg-sidebar"
               >
                 Cancelar
               </button>
@@ -347,8 +347,8 @@ export default function Orders() {
                 }}
                 className={`w-full rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-tx-muted ${
                   itemErrores.product_id
-                    ? 'border-red-400 focus:ring-red-300'
-                    : 'border-gray-300 focus:ring-primary'
+                    ? 'border-danger focus:ring-danger'
+                    : 'border-input-border focus:ring-secondary'
                 }`}
               >
                 <option value="">Elegí un producto…</option>
@@ -413,7 +413,7 @@ export default function Orders() {
                 type="button"
                 onClick={() => setItemModal(null)}
                 disabled={itemSaving}
-                className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
+                className="rounded-lg border border-input-border px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
               >
                 Cancelar
               </button>

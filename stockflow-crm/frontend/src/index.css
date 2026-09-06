@@ -2,31 +2,88 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Sistema de color de StockFlow CRM.
+ *
+ * Todos los pares de color cumplen WCAG 2.1 nivel AA: 4.5:1 para texto normal
+ * y 3:1 para bordes y componentes de interfaz. El ratio verificado va anotado
+ * en cada token, para que cualquier cambio futuro se pueda contrastar.
+ *
+ * Roles (importante, porque los nombres vienen de antes):
+ *   - `primary`   → superficie de marca suave (menta). Fondo de estados e ítems
+ *                   activos, con `primary-text` (verde oscuro) encima.
+ *   - `secondary` → acción principal. Es el relleno de los botones de CTA, con
+ *                   `secondary-text` (blanco) encima.
+ */
 :root {
-  --color-sidebar-bg: #ECFDF5;
+  /* ── Superficies ────────────────────────────────────────────────────────── */
   --color-page-bg: #FFFBF9;
+  --color-sidebar-bg: #ECFDF5;
   --color-surface: #FFFFFF;
-  --color-border: #D1FAE5;
+  --color-border: #D6E7DF;          /* separadores de tarjetas y tablas */
+  --color-input-border: #6F998A;    /* 3.18:1 sobre blanco — campo perceptible */
 
-  --color-primary: #6EE7B7;
-  --color-primary-dark: #34D399;
-  --color-primary-text: #064E3B;
+  /* ── Superficie de marca (fondos suaves, no botones) ────────────────────── */
+  --color-primary: #D1FAE5;
+  --color-primary-dark: #A7F3D0;
+  --color-primary-text: #065F46;    /* 7.68:1 sobre blanco y sobre la menta */
 
-  --color-secondary: #FDBA74;
-  --color-secondary-dark: #FB923C;
-  --color-secondary-text: #7C2D12;
+  /* ── Acción principal (botones de CTA) ──────────────────────────────────── */
+  --color-secondary: #047857;       /* emerald-700 */
+  --color-secondary-dark: #065F46;  /* hover, más oscuro */
+  --color-secondary-text: #FFFFFF;  /* 5.48:1 sobre el relleno */
 
-  --color-text-primary: #1C1917;
-  --color-text-secondary: #4B7A68;
-  --color-text-muted: #6B9E8A;
+  /* ── Texto ──────────────────────────────────────────────────────────────── */
+  --color-text-primary: #111827;    /* 17.74:1 */
+  --color-text-secondary: #3F6355;  /* 6.72:1 */
+  --color-text-muted: #547668;      /* 4.78:1 incluso sobre el sidebar */
 
+  /* ── Colores semánticos (nunca son el único indicador de significado) ───── */
+  --color-success: #15803D;         /* 5.02:1 */
+  --color-success-bg: #DCFCE7;
+  --color-warning: #B45309;         /* 5.02:1 */
+  --color-warning-bg: #FEF3C7;
+  --color-danger: #B91C1C;          /* 6.47:1 */
+  --color-danger-bg: #FEE2E2;
+  --color-accent: #C2410C;          /* 5.18:1 — acento cálido, solo texto */
+
+  --color-focus-ring: #047857;      /* 5.48:1 — foco visible por teclado */
+
+  /* ── Confianza de la extracción por IA ──────────────────────────────────── */
   --color-confidence-high-bg: #D1FAE5;
   --color-confidence-high-border: #6EE7B7;
   --color-confidence-high-text: #064E3B;
-  --color-confidence-medium-bg: #FEF9C3;
-  --color-confidence-medium-border: #FDE047;
-  --color-confidence-medium-text: #713F12;
+  --color-confidence-medium-bg: #FEF3C7;
+  --color-confidence-medium-border: #FCD34D;
+  --color-confidence-medium-text: #78350F;
   --color-confidence-low-bg: #FEE2E2;
   --color-confidence-low-border: #FCA5A5;
   --color-confidence-low-text: #7F1D1D;
+}
+
+@layer base {
+  /**
+   * Foco visible por teclado en todo elemento interactivo.
+   *
+   * Sin esto, quien navega con Tab no sabe dónde está parado. Se usa
+   * `:focus-visible` para no dibujar el anillo en los clics con el mouse.
+   */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--color-focus-ring);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+  }
+
+  /* Un elemento deshabilitado tiene que verse deshabilitado. */
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
 }

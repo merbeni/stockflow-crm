@@ -190,7 +190,7 @@ export default function Customers() {
                       </button>
                       <button
                         onClick={() => handleDelete(c)}
-                        className="text-xs text-red-500 hover:underline"
+                        className="text-xs text-danger hover:underline"
                       >
                         Eliminar
                       </button>
@@ -242,7 +242,7 @@ export default function Customers() {
                 type="button"
                 onClick={() => setModal(null)}
                 disabled={saving}
-                className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
+                className="rounded-lg border border-input-border px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
               >
                 Cancelar
               </button>

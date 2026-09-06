@@ -208,9 +208,9 @@ export default function Users() {
                         {!u.is_active ? (
                           <span className="text-tx-muted">Desactivado</span>
                         ) : u.is_email_verified ? (
-                          <span className="text-green-600">Activo</span>
+                          <span className="text-success">Activo</span>
                         ) : (
-                          <span className="text-amber-600">Falta verificar el correo</span>
+                          <span className="text-warning">Falta verificar el correo</span>
                         )}
                       </td>
                       <td className="space-x-3 px-4 py-3 text-right">
@@ -246,7 +246,7 @@ export default function Users() {
                                 )
                               }
                               className={`text-xs hover:underline ${
-                                u.is_active ? 'text-amber-500' : 'text-green-600'
+                                u.is_active ? 'text-warning' : 'text-success'
                               }`}
                             >
                               {u.is_active ? 'Desactivar' : 'Activar'}
@@ -256,7 +256,7 @@ export default function Users() {
                         {!esUnoMismo && (
                           <button
                             onClick={() => eliminar(u)}
-                            className="text-xs text-red-500 hover:underline"
+                            className="text-xs text-danger hover:underline"
                           >
                             Eliminar
                           </button>
@@ -328,7 +328,7 @@ export default function Users() {
                 value={form.role}
                 disabled={guardando}
                 onChange={(e) => actualizar('role', e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full rounded-lg border border-input-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-secondary"
               >
                 <option value="operator">Operador</option>
                 <option value="admin">Administrador</option>
@@ -340,7 +340,7 @@ export default function Users() {
                 type="button"
                 onClick={() => setModalAbierto(false)}
                 disabled={guardando}
-                className="rounded-lg border border-gray-300 px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
+                className="rounded-lg border border-input-border px-4 py-1.5 text-sm hover:bg-sidebar disabled:opacity-50"
               >
                 Cancelar
               </button>
