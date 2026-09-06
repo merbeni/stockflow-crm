@@ -173,7 +173,7 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 | Suite | Archivos | Casos | Resultado |
 |-------|----------|-------|-----------|
 | Backend (pytest) | 8 | 204 | ✅ Todos en verde |
-| Frontend (Vitest) | 7 | 47 | ✅ Todos en verde |
+| Frontend (Vitest) | 9 | 55 | ✅ Todos en verde |
 | **Total** | **17** | **259** | ✅ |
 
 ### 7.1 Desglose del backend por módulo
@@ -182,12 +182,12 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 |---------|-------|------|
 | `test_auth.py` | 35 | Alta, verificación de correo, login, sesión, roles |
 | `test_products.py` | 37 | ABM, SKU único, stock decimal, límites numéricos, borrado |
-| `test_invoices.py` | 34 | Procesamiento, confirmación, rechazo, alta desde factura |
+| `test_invoices.py` | 37 | Procesamiento, confirmación, rechazo, alta desde factura, errores de Gemini |
 | `test_orders.py` | 26 | Líneas, máquina de estados, stock insuficiente, correo |
 | `test_customers.py` | 22 | ABM, historial, borrado con pedidos |
 | `test_suppliers.py` | 18 | ABM, validaciones de contacto, aislamiento |
 | `test_stock_movements.py` | 19 | Registro automático, trazabilidad, filtros |
-| `test_security.py` | 8 | Hash de contraseñas y firma de tokens |
+| `test_security.py` | 10 | Hash de contraseñas, firma de tokens y CORS en errores no controlados |
 
 ### 7.2 Desglose del frontend
 
@@ -200,6 +200,8 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 | `api/client.test.js` | 3 | Cliente HTTP, cabeceras, expiración de sesión |
 | `PrivateRoute.test.jsx` | 3 | Protección de rutas |
 | `ErrorBoundary.test.jsx` | 2 | La aplicación no queda en blanco ante un error |
+| `Layout.test.jsx` | 3 | Menú lateral en móvil: alternancia, `aria-controls` y foco |
+| `pages/Invoices.archivo.test.js` | 5 | Límites de tipo y peso del archivo antes de subirlo |
 
 > **Cómo leer estos números.** La cantidad de pruebas no mide calidad por sí sola: una suite
 > puede tener 200 casos y no probar nada relevante. Lo que importa es la **proporción de
@@ -866,6 +868,19 @@ npm install
 npm test          # una pasada
 npx vitest        # modo interactivo
 ```
+
+### Comprobar que la documentación no mienta
+
+```bash
+python scripts/verificar_documentacion.py
+```
+
+Contrasta contra la suite real los 26 números repartidos entre este documento, el
+README y la planilla de casos: totales, desglose por archivo y cantidad de casos
+documentados. Existe porque esos números se desfasan solos —cada prueba nueva
+obliga a tocar cuatro lugares— y una documentación que dice 47 donde hay 55 deja
+de ser confiable para todo lo demás que afirma. Sale con código 1 si algo no
+coincide, así puede engancharse a un hook antes de entregar.
 
 ### Criterio
 
