@@ -88,20 +88,24 @@ export default function Products() {
   }
 
   function actualizar(campo, valor) {
-    setForm((f) => {
-      const siguiente = { ...f, [campo]: valor }
+    // El objeto siguiente se arma acá y no dentro del actualizador de `setForm`.
+    // React exige que esos actualizadores sean puros y puede invocarlos más de
+    // una vez —en modo estricto lo hace siempre—, así que un `setErrores`
+    // adentro se ejecutaba repetido. Es el mismo tipo de suposición que causó el
+    // problema del foco en el modal: dar por sentado que algo corre una sola vez.
+    const siguiente = { ...form, [campo]: valor }
+    setForm(siguiente)
+
+    if (campo === 'allow_decimal_stock') {
       // Al cambiar el flag hay que revalidar las cantidades ya cargadas.
-      if (campo === 'allow_decimal_stock') {
-        setErrores((e) => ({
-          ...e,
-          current_stock: REGLAS.current_stock(siguiente.current_stock, siguiente),
-          minimum_stock: REGLAS.minimum_stock(siguiente.minimum_stock, siguiente),
-        }))
-      } else if (REGLAS[campo] && errores[campo]) {
-        setErrores((e) => ({ ...e, [campo]: REGLAS[campo](valor, siguiente) }))
-      }
-      return siguiente
-    })
+      setErrores((e) => ({
+        ...e,
+        current_stock: REGLAS.current_stock(siguiente.current_stock, siguiente),
+        minimum_stock: REGLAS.minimum_stock(siguiente.minimum_stock, siguiente),
+      }))
+    } else if (REGLAS[campo] && errores[campo]) {
+      setErrores((e) => ({ ...e, [campo]: REGLAS[campo](valor, siguiente) }))
+    }
   }
 
   function validarCampo(campo) {
