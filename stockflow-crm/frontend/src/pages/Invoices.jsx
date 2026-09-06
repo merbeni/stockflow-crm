@@ -485,9 +485,15 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
 
       {/* Proveedor */}
       <div className="mb-4 rounded-xl border border-brand-border bg-surface p-4">
-        <label className="mb-1.5 block text-xs font-medium text-tx-muted">Proveedor</label>
+        <label
+          htmlFor="factura-proveedor"
+          className="mb-1.5 block text-xs font-medium text-tx-muted"
+        >
+          Proveedor
+        </label>
         <div className="relative">
           <input
+            id="factura-proveedor"
             type="text"
             value={supplierQuery}
             onChange={(e) => {
@@ -554,18 +560,25 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
               { key: 'phone', label: 'Teléfono', required: false, type: 'text' },
             ].map(({ key, label, required, type }) => (
               <div key={key} className="flex items-start gap-3">
-                <label className="w-28 shrink-0 pt-2 text-xs text-tx-muted">
+                <label
+                  htmlFor={`prov-nuevo-${key}`}
+                  className="w-28 shrink-0 pt-2 text-xs text-tx-muted"
+                >
                   {label}
                   {required && <span className="ml-0.5 text-danger">*</span>}
                 </label>
                 <div className="flex-1">
                   <input
+                    id={`prov-nuevo-${key}`}
                     type={type}
                     value={newSupplierForm[key]}
                     onChange={(e) =>
                       setNewSupplierForm((f) => ({ ...f, [key]: e.target.value }))
                     }
                     aria-invalid={Boolean(erroresProveedor[key])}
+                    aria-describedby={
+                      erroresProveedor[key] ? `prov-nuevo-${key}-error` : undefined
+                    }
                     className={`w-full rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 ${
                       erroresProveedor[key]
                         ? 'border-danger focus:ring-red-400'
@@ -574,7 +587,13 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                     placeholder={required ? 'Obligatorio' : 'Opcional'}
                   />
                   {erroresProveedor[key] && (
-                    <p className="mt-1 text-xs text-danger">{erroresProveedor[key]}</p>
+                    <p
+                      id={`prov-nuevo-${key}-error`}
+                      role="alert"
+                      className="mt-1 text-xs text-danger"
+                    >
+                      {erroresProveedor[key]}
+                    </p>
                   )}
                 </div>
               </div>
@@ -637,8 +656,14 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                   {/* Corrección de los datos extraídos */}
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                     <div className="sm:col-span-2">
-                      <label className="mb-0.5 block text-xs text-tx-muted">Descripción</label>
+                      <label
+                        htmlFor={`linea-${state.invoice_item_id}-descripcion`}
+                        className="mb-0.5 block text-xs text-tx-muted"
+                      >
+                        Descripción
+                      </label>
                       <input
+                        id={`linea-${state.invoice_item_id}-descripcion`}
                         type="text"
                         value={state.description}
                         onChange={(e) => setItem(idx, { description: e.target.value })}
@@ -646,8 +671,14 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                       />
                     </div>
                     <div>
-                      <label className="mb-0.5 block text-xs text-tx-muted">Cantidad</label>
+                      <label
+                        htmlFor={`linea-${state.invoice_item_id}-cantidad`}
+                        className="mb-0.5 block text-xs text-tx-muted"
+                      >
+                        Cantidad
+                      </label>
                       <input
+                        id={`linea-${state.invoice_item_id}-cantidad`}
                         type="number"
                         step={permiteDecimales ? '0.001' : '1'}
                         min="0"
@@ -657,8 +688,14 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                       />
                     </div>
                     <div>
-                      <label className="mb-0.5 block text-xs text-tx-muted">Precio unit.</label>
+                      <label
+                        htmlFor={`linea-${state.invoice_item_id}-precio`}
+                        className="mb-0.5 block text-xs text-tx-muted"
+                      >
+                        Precio unit.
+                      </label>
                       <input
+                        id={`linea-${state.invoice_item_id}-precio`}
                         type="number"
                         step="0.01"
                         min="0"
@@ -671,11 +708,15 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
 
                   {/* Producto asociado */}
                   <div className="flex items-center gap-2">
-                    <label className="w-28 shrink-0 text-xs text-tx-muted">
+                    <label
+                      htmlFor={`linea-${state.invoice_item_id}-producto`}
+                      className="w-28 shrink-0 text-xs text-tx-muted"
+                    >
                       Asociar a producto
                     </label>
                     {!state.use_new ? (
                       <select
+                        id={`linea-${state.invoice_item_id}-producto`}
                         value={state.product_id}
                         onChange={(e) => {
                           const pid = e.target.value
@@ -722,11 +763,15 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
                         { key: 'minimum_stock', label: 'Stock mínimo', type: 'number' },
                       ].map(({ key, label, required, type = 'text' }) => (
                         <div key={key}>
-                          <label className="mb-0.5 block text-xs text-tx-muted">
+                          <label
+                            htmlFor={`linea-${state.invoice_item_id}-nuevo-${key}`}
+                            className="mb-0.5 block text-xs text-tx-muted"
+                          >
                             {label}
                             {required && <span className="ml-0.5 text-danger">*</span>}
                           </label>
                           <input
+                            id={`linea-${state.invoice_item_id}-nuevo-${key}`}
                             type={type}
                             step={type === 'number' ? '0.01' : undefined}
                             value={state.new_product[key]}
@@ -759,8 +804,14 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
 
                   {/* SKU del proveedor */}
                   <div className="flex items-center gap-2">
-                    <label className="w-28 shrink-0 text-xs text-tx-muted">SKU del proveedor</label>
+                    <label
+                      htmlFor={`linea-${state.invoice_item_id}-sku-proveedor`}
+                      className="w-28 shrink-0 text-xs text-tx-muted"
+                    >
+                      SKU del proveedor
+                    </label>
                     <input
+                      id={`linea-${state.invoice_item_id}-sku-proveedor`}
                       type="text"
                       placeholder="Opcional — sirve para auto-completar próximas facturas"
                       value={state.supplier_sku}

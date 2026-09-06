@@ -35,4 +35,38 @@ describe('Modal', () => {
     fireEvent.click(screen.getByRole('button'))
     expect(onClose).not.toHaveBeenCalled()
   })
+
+  // ── Accesibilidad ──────────────────────────────────────────────────────────
+  // Sin esto la ventana era un div flotante: no se cerraba con el teclado, no se
+  // anunciaba como diálogo y el botón de cerrar no tenía nombre accesible.
+
+  it('se cierra con la tecla Escape', () => {
+    const onClose = vi.fn()
+    render(<Modal title="Title" onClose={onClose}><p>body</p></Modal>)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignora Escape mientras hay una operación en curso', () => {
+    const onClose = vi.fn()
+    render(<Modal title="Title" onClose={onClose} disabled><p>body</p></Modal>)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('se anuncia como diálogo y toma el título como nombre accesible', () => {
+    render(<Modal title="Editar producto" onClose={() => {}}><p>body</p></Modal>)
+    expect(screen.getByRole('dialog', { name: 'Editar producto' })).toBeInTheDocument()
+  })
+
+  it('el botón de cerrar tiene nombre accesible', () => {
+    render(<Modal title="Title" onClose={() => {}}><p>body</p></Modal>)
+    // Antes era solo «×»: un lector de pantalla no podía nombrarlo.
+    expect(screen.getByRole('button', { name: 'Cerrar' })).toBeInTheDocument()
+  })
+
+  it('lleva el foco adentro de la ventana al abrirse', () => {
+    render(<Modal title="Title" onClose={() => {}}><p>body</p></Modal>)
+    expect(screen.getByRole('dialog')).toHaveFocus()
+  })
 })
