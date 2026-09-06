@@ -221,18 +221,64 @@ az webapp start --name stockflow-backend --resource-group StockFlow
 
 ## Parte 4 — Frontend (Azure Static Web Apps)
 
-El Static Web App está vinculado al repositorio de GitHub (`main`). La variable
-de build **`VITE_API_URL`** debe apuntar al backend (Vite la incrusta en tiempo
-de compilación):
+El frontend se compila con Vite y se publica el contenido de `dist/`.
 
-```bash
-az staticwebapp appsettings set --name stockflow-frontend --resource-group StockFlow \
-  --setting-names "VITE_API_URL=https://stockflow-backend-btczc8eahbaaafd6.canadacentral-01.azurewebsites.net"
+### 4.1 La URL del backend se fija en tiempo de compilación
+
+Vite **incrusta** las variables `VITE_*` dentro del JavaScript al compilar: no se
+leen en el navegador, así que cambiarlas en Azure después del build no tiene
+ningún efecto. Por eso la URL del backend vive en
+[`frontend/.env.production`](../../frontend/.env.production), que sí está
+versionado:
+
+```
+VITE_API_URL=https://stockflow-backend-btczc8eahbaaafd6.canadacentral-01.azurewebsites.net
 ```
 
-Para reconstruir y volver a publicar el frontend, se hace `npm run build` en
-`frontend/` y se publica el contenido de `dist/` (vía el flujo de GitHub del
-Static Web App o con la SWA CLI).
+Vite le da prioridad a `.env.production` sobre `.env` al compilar para
+producción. Eso permite que `.env` —que es local y no se versiona— siga
+apuntando a `http://localhost:8000` para desarrollar, sin riesgo de publicar por
+error un build que apunte a la máquina de quien lo compiló.
+
+> Ahí no hay secretos: todo lo que empieza con `VITE_` termina en el JavaScript
+> que descarga cualquier visitante. Una clave nunca debe ir en una variable
+> `VITE_*`.
+
+### 4.2 Compilar y publicar
+
+```bash
+cd frontend
+npm run build
+
+# Publicar el contenido de dist/ en el Static Web App.
+# El token se obtiene de Azure y se pasa por variable de entorno para no
+# dejarlo escrito en ningún archivo.
+export SWA_CLI_DEPLOYMENT_TOKEN=$(az staticwebapp secrets list \
+  -g StockFlow -n stockflow-frontend --query "properties.apiKey" -o tsv)
+
+npx @azure/static-web-apps-cli deploy ./dist --env production
+```
+
+### 4.3 Verificar que se publicó lo que corresponde
+
+El nombre del archivo del bundle cambia con cada build, así que compararlo
+confirma que Azure está sirviendo la versión nueva y no una cacheada:
+
+```bash
+F=https://proud-smoke-07bfb670f.7.azurestaticapps.net
+curl -s $F/ | grep -o '/assets/index-[A-Za-z0-9_-]*\.js'   # debe coincidir con dist/
+
+# La URL del backend tiene que estar embebida y localhost no debe aparecer.
+curl -s $F/assets/index-XXXX.js | grep -c "localhost:8000"   # 0
+```
+
+Y que el navegador pueda efectivamente llamar al backend:
+
+```bash
+curl -s -i -X OPTIONS $BACKEND/auth/login \
+  -H "Origin: https://proud-smoke-07bfb670f.7.azurestaticapps.net" \
+  -H "Access-Control-Request-Method: POST" | grep -i "access-control-allow-origin"
+```
 
 ---
 
@@ -262,6 +308,28 @@ curl -s -D - -o /dev/null -X OPTIONS "$BASE/products" \
 La prueba final humana: entrar al frontend, registrarse, abrir el correo de
 verificación real y hacer login.
 
+### 5.1 Verificación automatizada del despliegue
+
+Además del checklist, hay una verificación que recorre en producción las reglas
+que se corrigieron y que **no** se pueden comprobar con la suite local, porque
+dependen de que el código publicado sea el correcto:
+
+| Control | Qué confirma |
+|---------|--------------|
+| Alta con el correo en MAYÚSCULAS | Queda guardado en minúsculas |
+| Segunda alta con el mismo correo | Se detecta como duplicado |
+| Login antes de verificar | Da 403, no deja entrar |
+| Login escribiendo el correo con otra caja | Entra igual |
+| Precio y stock fuera de rango | Dan 422, **no 500** |
+
+Crea una organización desechable y la borra al terminar. **Resultado de la
+última ejecución: 10 controles, 0 fallas.**
+
+> **Ojo con la primera petición.** Después de un despliegue, la primera llamada
+> puede devolver **502**: el contenedor todavía está arrancando. No es un error
+> del despliegue. Conviene hacer una petición cualquiera, esperar, y recién
+> entonces correr la verificación.
+
 ---
 
 ## Solución de problemas (problemas reales encontrados)
@@ -273,7 +341,10 @@ verificación real y hacer login.
 | `AADSTS50076 … multi-factor authentication` al hacer `az login` | El tenant exige MFA y el login normal no lo dispara. | `az login --tenant <TENANT_ID>` (fuerza el paso de MFA). |
 | `525 5.7.1 Unauthorized IP address` al enviar correo | Brevo bloquea IPs no autorizadas. | Desactivar la restricción de IP en Brevo (Parte 2.3). |
 | `"az" no se reconoce` en la terminal de VSCode | La terminal se abrió antes de instalar el CLI (PATH viejo). | Abrir una terminal **fuera de VSCode**, o reiniciar Windows, o usar la ruta completa a `az.cmd`. |
-| Primeras requests al backend dan timeout | Arranque en frío del contenedor. | Esperar 1–2 min; después responde normal. |
+| Primeras requests al backend dan timeout o **502** | Arranque en frío del contenedor tras el despliegue. | Esperar 1–2 min; después responde normal. No reintentar el despliegue por esto. |
+| `DeploymentInProgress` (409) al desplegar | El despliegue **sí arrancó**; el CLI reporta el 409 de un segundo intento. | Consultar `az webapp log deployment show` y esperar el `Deployment successful` en lugar de volver a desplegar. |
+| El frontend publicado sigue llamando a `localhost:8000` | Se compiló tomando `.env` en vez de `.env.production`. | Verificar que exista `frontend/.env.production` y que el bundle no contenga `localhost` (Parte 4.3). |
+| Un correo válido da «No es una dirección de correo válida» | El validador comprueba que el dominio exista. Dominios reservados como `.invalid` o `.test` se rechazan. | Usar un dominio real. No es un defecto del sistema. |
 
 ---
 
