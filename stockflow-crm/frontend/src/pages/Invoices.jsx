@@ -4,6 +4,12 @@ import { getErrorMessage } from '../api/errors'
 import Badge from '../components/ui/Badge'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import Modal from '../components/ui/Modal'
+import {
+  email as validarEmail,
+  nombrePersona as validarNombrePersona,
+  sku as validarSku,
+  telefono as validarTelefono,
+} from '../utils/validation'
 
 // ── Paso de carga ─────────────────────────────────────────────────────────────
 function UploadStep({ onProcessed, onCancel }) {
@@ -237,9 +243,23 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
   const [error, setError] = useState('')
 
   const esProveedorNuevo = !selectedSupplier && supplierQuery.trim() !== ''
-  const proveedorNuevoCompleto = esProveedorNuevo
-    ? newSupplierForm.contact_name.trim() !== '' && newSupplierForm.email.trim() !== ''
-    : true
+
+  /**
+   * Errores de formato del proveedor nuevo, campo por campo.
+   *
+   * Solo se señala un campo que ya tiene contenido: avisar "correo inválido"
+   * sobre un campo todavía vacío sería ruido. Lo obligatorio se controla aparte,
+   * en `problemasDelProveedor`.
+   */
+  const erroresProveedor = esProveedorNuevo
+    ? {
+        contact_name: newSupplierForm.contact_name.trim()
+          ? validarNombrePersona(newSupplierForm.contact_name)
+          : null,
+        email: newSupplierForm.email.trim() ? validarEmail(newSupplierForm.email) : null,
+        phone: newSupplierForm.phone.trim() ? validarTelefono(newSupplierForm.phone) : null,
+      }
+    : {}
 
   const coincidencias = supplierQuery.trim()
     ? suppliers.filter((s) => s.name.toLowerCase().includes(supplierQuery.toLowerCase()))
@@ -264,6 +284,28 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
 
   const productoDe = (it) => products.find((p) => p.id === parseInt(it.product_id, 10))
 
+  /** Datos obligatorios y formato del proveedor que se va a crear. */
+  function problemasDelProveedor() {
+    if (!esProveedorNuevo) return []
+    const problemas = []
+    const etiquetas = {
+      contact_name: 'nombre de contacto',
+      email: 'correo',
+      phone: 'teléfono',
+    }
+
+    if (!newSupplierForm.contact_name.trim()) {
+      problemas.push('Proveedor nuevo: falta el nombre de contacto.')
+    }
+    if (!newSupplierForm.email.trim()) {
+      problemas.push('Proveedor nuevo: falta el correo.')
+    }
+    for (const [campo, mensaje] of Object.entries(erroresProveedor)) {
+      if (mensaje) problemas.push(`Proveedor nuevo — ${etiquetas[campo]}: ${mensaje}`)
+    }
+    return problemas
+  }
+
   /**
    * Valida todas las líneas antes de llamar al backend.
    *
@@ -280,7 +322,12 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
         problemas.push(`${etiqueta}: elegí un producto, creá uno nuevo u omitila.`)
       }
       if (it.use_new) {
-        if (!it.new_product.sku.trim()) problemas.push(`${etiqueta}: falta el SKU del producto nuevo.`)
+        if (!it.new_product.sku.trim()) {
+          problemas.push(`${etiqueta}: falta el SKU del producto nuevo.`)
+        } else {
+          const skuInvalido = validarSku(it.new_product.sku)
+          if (skuInvalido) problemas.push(`${etiqueta} — SKU: ${skuInvalido}`)
+        }
         if (!it.new_product.name.trim()) problemas.push(`${etiqueta}: falta el nombre del producto nuevo.`)
         if (it.new_product.price === '' || Number(it.new_product.price) < 0) {
           problemas.push(`${etiqueta}: el precio del producto nuevo no es válido.`)
@@ -309,9 +356,8 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
     return problemas
   }
 
-  const problemas = problemasDeLinea()
-  const puedeConfirmar =
-    !submitting && proveedorNuevoCompleto && problemas.length === 0 && items.length > 0
+  const problemas = [...problemasDelProveedor(), ...problemasDeLinea()]
+  const puedeConfirmar = !submitting && problemas.length === 0 && items.length > 0
 
   async function handleConfirm() {
     setError('')
@@ -507,20 +553,30 @@ function ReviewStep({ processed, products, suppliers, onConfirmed, onCancel, onB
               { key: 'email', label: 'Correo', required: true, type: 'email' },
               { key: 'phone', label: 'Teléfono', required: false, type: 'text' },
             ].map(({ key, label, required, type }) => (
-              <div key={key} className="flex items-center gap-3">
-                <label className="w-28 shrink-0 text-xs text-tx-muted">
+              <div key={key} className="flex items-start gap-3">
+                <label className="w-28 shrink-0 pt-2 text-xs text-tx-muted">
                   {label}
                   {required && <span className="ml-0.5 text-red-500">*</span>}
                 </label>
-                <input
-                  type={type}
-                  value={newSupplierForm[key]}
-                  onChange={(e) =>
-                    setNewSupplierForm((f) => ({ ...f, [key]: e.target.value }))
-                  }
-                  className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder={required ? 'Obligatorio' : 'Opcional'}
-                />
+                <div className="flex-1">
+                  <input
+                    type={type}
+                    value={newSupplierForm[key]}
+                    onChange={(e) =>
+                      setNewSupplierForm((f) => ({ ...f, [key]: e.target.value }))
+                    }
+                    aria-invalid={Boolean(erroresProveedor[key])}
+                    className={`w-full rounded-lg border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 ${
+                      erroresProveedor[key]
+                        ? 'border-red-400 focus:ring-red-400'
+                        : 'border-gray-300 focus:ring-primary'
+                    }`}
+                    placeholder={required ? 'Obligatorio' : 'Opcional'}
+                  />
+                  {erroresProveedor[key] && (
+                    <p className="mt-1 text-xs text-red-600">{erroresProveedor[key]}</p>
+                  )}
+                </div>
               </div>
             ))}
           </div>
