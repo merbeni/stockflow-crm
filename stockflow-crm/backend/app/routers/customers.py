@@ -13,6 +13,7 @@ from app.schemas.customer import (
 )
 from app.services.customer_service import (
     create_customer,
+    deletability_map,
     delete_customer,
     get_customer,
     get_order_history,
@@ -27,6 +28,26 @@ router = APIRouter(
 )
 
 
+def _a_respuesta(db: Session, registro: Customer) -> CustomerResponse:
+    puede, motivo = deletability_map(db, [registro])[registro.id]
+    respuesta = CustomerResponse.model_validate(registro)
+    respuesta.can_delete = puede
+    respuesta.delete_blocked_reason = motivo
+    return respuesta
+
+
+def _a_respuestas(db: Session, registros: list[Customer]) -> list[CustomerResponse]:
+    borrables = deletability_map(db, registros)
+    respuestas = []
+    for registro in registros:
+        puede, motivo = borrables[registro.id]
+        respuesta = CustomerResponse.model_validate(registro)
+        respuesta.can_delete = puede
+        respuesta.delete_blocked_reason = motivo
+        respuestas.append(respuesta)
+    return respuestas
+
+
 def _get_or_404(db: Session, customer_id: int, org_id: int) -> Customer:
     customer = get_customer(db, customer_id, org_id)
     if not customer:
@@ -36,7 +57,7 @@ def _get_or_404(db: Session, customer_id: int, org_id: int) -> Customer:
 
 @router.get("", response_model=list[CustomerResponse])
 def get_all(org_id: int = Depends(get_current_org_id), db: Session = Depends(get_db)):
-    return list_customers(db, org_id)
+    return _a_respuestas(db, list_customers(db, org_id))
 
 
 @router.post("", response_model=CustomerResponse, status_code=status.HTTP_201_CREATED)
@@ -45,7 +66,7 @@ def create(
     org_id: int = Depends(get_current_org_id),
     db: Session = Depends(get_db),
 ):
-    return create_customer(db, payload, org_id)
+    return _a_respuesta(db, create_customer(db, payload, org_id))
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)
@@ -54,7 +75,7 @@ def get_one(
     org_id: int = Depends(get_current_org_id),
     db: Session = Depends(get_db),
 ):
-    return _get_or_404(db, customer_id, org_id)
+    return _a_respuesta(db, _get_or_404(db, customer_id, org_id))
 
 
 @router.put("/{customer_id}", response_model=CustomerResponse)
@@ -64,7 +85,8 @@ def update(
     org_id: int = Depends(get_current_org_id),
     db: Session = Depends(get_db),
 ):
-    return update_customer(db, _get_or_404(db, customer_id, org_id), payload)
+    customer = _get_or_404(db, customer_id, org_id)
+    return _a_respuesta(db, update_customer(db, customer, payload))
 
 
 @router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)

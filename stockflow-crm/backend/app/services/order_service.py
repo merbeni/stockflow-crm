@@ -9,7 +9,7 @@ from app.models.order import Order, OrderItem, OrderStatus
 from app.models.product import Product
 from app.models.stock_movement import MovementType, StockMovement
 from app.schemas.order import OrderCreate, OrderItemAdd, OrderItemResponse, OrderResponse
-from app.services.stock_rules import validar_cantidad
+from app.services.stock_rules import formatear_cantidad, validar_cantidad
 
 # Valid status transitions
 _TRANSITIONS: dict[OrderStatus, OrderStatus] = {
@@ -164,11 +164,20 @@ def add_item(
         campo="quantity",
     )
 
-    if float(payload.quantity) > float(product.current_stock):
+    # El mismo producto puede estar ya en otra línea del pedido, así que lo
+    # disponible es el stock menos lo que este pedido reserva. Comparar solo
+    # contra el stock dejaba armar pedidos que después no se podían confirmar.
+    ya_reservado = sum(
+        float(oi.quantity) for oi in order.items if oi.product_id == payload.product_id
+    )
+    disponible = float(product.current_stock) - ya_reservado
+    if float(payload.quantity) > disponible:
+        detalle = f"quedan {formatear_cantidad(product.current_stock)}"
+        if ya_reservado:
+            detalle += f", este pedido ya reserva {formatear_cantidad(ya_reservado)}"
         raise DomainError(
-            f"No hay stock suficiente de «{product.name}»: quedan "
-            f"{Decimal(str(product.current_stock)).normalize()} y se piden "
-            f"{Decimal(str(payload.quantity)).normalize()}.",
+            f"No hay stock suficiente de «{product.name}»: {detalle} y se piden "
+            f"{formatear_cantidad(payload.quantity)}.",
             field="quantity",
         )
 
@@ -218,15 +227,27 @@ def advance_status(db: Session, order_id: int, organization_id: int) -> OrderRes
             raise DomainError(
                 "No se puede confirmar un pedido sin productos. Agregá al menos uno."
             )
+        # Un producto puede aparecer en varias líneas, así que primero se suma
+        # todo lo que pide el pedido y recién después se compara con el stock.
+        # Validar mientras se descontaba hacía que el mensaje informara un stock
+        # ya modificado en memoria («quedan 0») distinto del que muestra la
+        # pantalla de productos.
+        requerido: dict[int, float] = {}
+        for oi in order.items:
+            requerido[oi.product_id] = requerido.get(oi.product_id, 0.0) + float(oi.quantity)
+
+        for product_id, total in requerido.items():
+            product = db.get(Product, product_id)
+            if float(product.current_stock) < total:
+                raise DomainError(
+                    f"No hay stock suficiente de «{product.name}»: quedan "
+                    f"{formatear_cantidad(product.current_stock)} y el pedido "
+                    f"requiere {formatear_cantidad(total)}."
+                )
+
         for oi in order.items:
             product = db.get(Product, oi.product_id)
             qty = float(oi.quantity)
-            if float(product.current_stock) < qty:
-                raise DomainError(
-                    f"No hay stock suficiente de «{product.name}»: quedan "
-                    f"{Decimal(str(product.current_stock)).normalize()} y el pedido "
-                    f"requiere {Decimal(str(oi.quantity)).normalize()}."
-                )
             product.current_stock = float(product.current_stock) - qty
             db.add(StockMovement(
                 organization_id=organization_id,

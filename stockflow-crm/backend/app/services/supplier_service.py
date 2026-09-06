@@ -1,5 +1,8 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.errors import DomainError
+from app.models.invoice import Invoice
 from app.models.supplier import Supplier
 from app.schemas.supplier import SupplierCreate, SupplierUpdate
 
@@ -37,6 +40,41 @@ def update_supplier(db: Session, supplier: Supplier, payload: SupplierUpdate) ->
     return supplier
 
 
+def deletability_map(
+    db: Session, suppliers: list[Supplier]
+) -> dict[int, tuple[bool, str | None]]:
+    """
+    Calcula en bloque si cada proveedor puede eliminarse y, si no, por qué.
+
+    Igual que en clientes: sin esto el borrado fallaba recién en la base y el
+    usuario recibía el mensaje genérico de integridad referencial, que no dice
+    qué depende del proveedor ni qué hacer al respecto.
+    """
+    if not suppliers:
+        return {}
+    conteo = dict(
+        db.query(Invoice.supplier_id, func.count(Invoice.id))
+        .filter(Invoice.supplier_id.in_([s.id for s in suppliers]))
+        .group_by(Invoice.supplier_id)
+        .all()
+    )
+    resultado: dict[int, tuple[bool, str | None]] = {}
+    for supplier in suppliers:
+        facturas = conteo.get(supplier.id, 0)
+        motivo = (
+            f"El proveedor tiene {facturas} factura(s) cargadas. Para conservar "
+            "la trazabilidad del stock no se puede eliminar."
+            if facturas
+            else None
+        )
+        resultado[supplier.id] = (motivo is None, motivo)
+    return resultado
+
+
 def delete_supplier(db: Session, supplier: Supplier) -> None:
+    puede, motivo = deletability_map(db, [supplier])[supplier.id]
+    if not puede:
+        raise DomainError(motivo, status_code=409)
+
     db.delete(supplier)
     db.commit()

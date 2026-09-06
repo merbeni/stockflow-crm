@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage } from '../api/errors'
+import TablaDesplazable from '../components/ui/TablaDesplazable'
 import Badge from '../components/ui/Badge'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import Modal from '../components/ui/Modal'
@@ -142,7 +143,7 @@ export default function StockMovements() {
         <p className="text-sm text-tx-muted">Cargando…</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-brand-border bg-surface shadow">
-          <div className="overflow-x-auto">
+          <TablaDesplazable>
             <table className="w-full min-w-[560px] text-sm">
               <thead className="border-b border-brand-border bg-sidebar text-xs uppercase tracking-wide text-tx-muted">
                 <tr>
@@ -209,7 +210,7 @@ export default function StockMovements() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TablaDesplazable>
         </div>
       )}
 

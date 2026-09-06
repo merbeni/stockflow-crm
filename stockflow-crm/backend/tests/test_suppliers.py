@@ -137,3 +137,60 @@ class TestAislamientoDeProveedores:
             client.get(f"/suppliers/{supplier['id']}", headers=other_org_headers).status_code
             == 404
         )
+
+
+class TestBorradoDeProveedorConFacturas:
+    """
+    Mismo criterio que en clientes: el proveedor de una factura cargada no se
+    puede borrar, y el motivo tiene que decirlo con esas palabras.
+    """
+
+    def _cargar_factura(self, client, auth_headers, mocker):
+        mocker.patch(
+            "app.services.invoice.invoice_service.process_invoice_file",
+            return_value={
+                "is_invoice": True,
+                "document_type": "factura de proveedor",
+                "supplier": "Acme Corp",
+                "date": "2024-01-15",
+                "items": [{
+                    "description": "Blue Widget",
+                    "quantity": 10,
+                    "unit_price": 5.00,
+                    "confidence": "high",
+                }],
+            },
+        )
+        resp = client.post(
+            "/invoices/process",
+            files={"file": ("factura.pdf", b"%PDF-1.4 contenido", "application/pdf")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 201, resp.text
+
+    def test_no_se_borra_y_el_mensaje_nombra_las_facturas(
+        self, client, auth_headers, make_supplier, mocker
+    ):
+        supplier = make_supplier(name="Acme Corp")
+        self._cargar_factura(client, auth_headers, mocker)
+
+        resp = client.delete(f"/suppliers/{supplier['id']}", headers=auth_headers)
+        assert resp.status_code == 409
+        detalle = resp.json()["detail"]
+        assert "factura" in detalle
+        assert "información relacionada" not in detalle
+        assert client.get(f"/suppliers/{supplier['id']}", headers=auth_headers).status_code == 200
+
+    def test_el_listado_avisa_que_no_se_puede_borrar(
+        self, client, auth_headers, make_supplier, mocker
+    ):
+        make_supplier(name="Acme Corp")
+        libre = client.get("/suppliers", headers=auth_headers).json()[0]
+        assert libre["can_delete"] is True
+        assert libre["delete_blocked_reason"] is None
+
+        self._cargar_factura(client, auth_headers, mocker)
+
+        bloqueado = client.get("/suppliers", headers=auth_headers).json()[0]
+        assert bloqueado["can_delete"] is False
+        assert "factura" in bloqueado["delete_blocked_reason"]

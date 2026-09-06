@@ -1,8 +1,9 @@
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.errors import DomainError
 from app.models.customer import Customer
 from app.models.order import Order, OrderItem
 from app.schemas.customer import (
@@ -48,7 +49,43 @@ def update_customer(db: Session, customer: Customer, payload: CustomerUpdate) ->
     return customer
 
 
+def deletability_map(
+    db: Session, customers: list[Customer]
+) -> dict[int, tuple[bool, str | None]]:
+    """
+    Calcula en bloque si cada cliente puede eliminarse y, si no, por qué.
+
+    Sin esta comprobación el borrado llegaba hasta la base y volvía como una
+    violación de integridad: el usuario leía un mensaje genérico sobre
+    "información relacionada" en lugar de enterarse de que el cliente tiene
+    pedidos, que es la única razón real por la que no se puede borrar.
+    """
+    if not customers:
+        return {}
+    conteo = dict(
+        db.query(Order.customer_id, func.count(Order.id))
+        .filter(Order.customer_id.in_([c.id for c in customers]))
+        .group_by(Order.customer_id)
+        .all()
+    )
+    resultado: dict[int, tuple[bool, str | None]] = {}
+    for customer in customers:
+        pedidos = conteo.get(customer.id, 0)
+        motivo = (
+            f"El cliente tiene {pedidos} pedido(s) registrados. Para conservar "
+            "el historial de ventas no se puede eliminar."
+            if pedidos
+            else None
+        )
+        resultado[customer.id] = (motivo is None, motivo)
+    return resultado
+
+
 def delete_customer(db: Session, customer: Customer) -> None:
+    puede, motivo = deletability_map(db, [customer])[customer.id]
+    if not puede:
+        raise DomainError(motivo, status_code=409)
+
     db.delete(customer)
     db.commit()
 

@@ -8,7 +8,7 @@ from app.models.order import OrderItem
 from app.models.product import Product
 from app.models.stock_movement import MovementType, StockMovement
 from app.schemas.product import ProductCreate, ProductUpdate
-from app.services.stock_rules import validar_cantidad
+from app.services.stock_rules import formatear_cantidad, validar_cantidad
 
 
 def get_product(db: Session, product_id: int, organization_id: int) -> Product | None:
@@ -149,7 +149,7 @@ def _motivo_bloqueo(
         )
     if Decimal(str(product.current_stock)) != 0:
         return (
-            f"Todavía quedan {Decimal(str(product.current_stock)).normalize()} "
+            f"Todavía quedan {formatear_cantidad(product.current_stock)} "
             "unidades en stock. Ajustá el stock a 0 antes de eliminar el producto."
         )
     return None

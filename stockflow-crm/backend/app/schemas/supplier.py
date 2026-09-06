@@ -34,5 +34,9 @@ class SupplierResponse(BaseModel):
     email: str | None
     phone: str | None
     created_at: datetime
+    # Lo calcula el servicio: permite deshabilitar el botón de borrado con su
+    # explicación, en vez de que la acción falle al pulsarla.
+    can_delete: bool = False
+    delete_blocked_reason: str | None = None
 
     model_config = {"from_attributes": True}

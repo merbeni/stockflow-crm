@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
+import TablaDesplazable from '../components/ui/TablaDesplazable'
 import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
@@ -195,7 +196,7 @@ export default function Products() {
         <p className="text-sm text-tx-muted">Cargando…</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-brand-border bg-surface shadow">
-          <div className="overflow-x-auto">
+          <TablaDesplazable>
             <table className="w-full min-w-[560px] text-sm">
               <thead className="border-b border-brand-border bg-sidebar text-xs uppercase tracking-wide text-tx-muted">
                 <tr>
@@ -271,7 +272,7 @@ export default function Products() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TablaDesplazable>
         </div>
       )}
 

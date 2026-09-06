@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
+import TablaDesplazable from '../components/ui/TablaDesplazable'
 import Badge from '../components/ui/Badge'
 import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
@@ -224,7 +225,7 @@ export default function Orders() {
               </div>
 
               {o.items.length > 0 ? (
-                <div className="overflow-x-auto">
+                <TablaDesplazable>
                   <table className="w-full min-w-[420px] text-sm">
                     <thead className="border-b border-brand-border text-xs text-tx-muted">
                       <tr>
@@ -264,7 +265,7 @@ export default function Orders() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </TablaDesplazable>
               ) : (
                 <p className="text-xs text-tx-muted">Este pedido todavía no tiene productos.</p>
               )}

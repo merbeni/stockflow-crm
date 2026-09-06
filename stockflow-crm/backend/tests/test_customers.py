@@ -192,3 +192,46 @@ class TestAislamientoDeClientes:
         customer = make_customer()
         resp = client.get(f"/customers/{customer['id']}/orders", headers=other_org_headers)
         assert resp.status_code == 404
+
+
+class TestBorradoDeClienteConPedidos:
+    """
+    Un cliente con pedidos no se puede borrar. Antes el intento llegaba hasta
+    la base y volvía como violación de integridad: el usuario leía un mensaje
+    genérico sobre "información relacionada" que no nombraba los pedidos.
+    """
+
+    def test_no_se_borra_y_el_mensaje_nombra_los_pedidos(
+        self, client, auth_headers, make_customer, make_product
+    ):
+        customer = make_customer()
+        producto = make_product(sku="DEL-C1", current_stock="10.000")
+        pedido = client.post(
+            "/orders", json={"customer_id": customer["id"]}, headers=auth_headers
+        ).json()
+        client.post(f"/orders/{pedido['id']}/items", json={
+            "product_id": producto["id"], "quantity": "1.000", "unit_price": "10.00",
+        }, headers=auth_headers)
+
+        resp = client.delete(f"/customers/{customer['id']}", headers=auth_headers)
+        assert resp.status_code == 409
+        detalle = resp.json()["detail"]
+        assert "pedido" in detalle
+        assert "información relacionada" not in detalle
+        # El cliente sigue existiendo.
+        assert client.get(f"/customers/{customer['id']}", headers=auth_headers).status_code == 200
+
+    def test_el_listado_avisa_que_no_se_puede_borrar(
+        self, client, auth_headers, make_customer
+    ):
+        customer = make_customer()
+        # Sin pedidos se puede borrar y no hay motivo que mostrar.
+        libre = client.get("/customers", headers=auth_headers).json()[0]
+        assert libre["can_delete"] is True
+        assert libre["delete_blocked_reason"] is None
+
+        client.post("/orders", json={"customer_id": customer["id"]}, headers=auth_headers)
+
+        bloqueado = client.get("/customers", headers=auth_headers).json()[0]
+        assert bloqueado["can_delete"] is False
+        assert "pedido" in bloqueado["delete_blocked_reason"]

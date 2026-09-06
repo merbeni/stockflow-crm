@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
+import TablaDesplazable from '../components/ui/TablaDesplazable'
 import Badge from '../components/ui/Badge'
 import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
@@ -156,7 +157,7 @@ export default function Customers() {
         <p className="text-sm text-tx-muted">Cargando…</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-brand-border bg-surface shadow">
-          <div className="overflow-x-auto">
+          <TablaDesplazable>
             <table className="w-full min-w-[520px] text-sm">
               <thead className="border-b border-brand-border bg-sidebar text-xs uppercase tracking-wide text-tx-muted">
                 <tr>
@@ -184,7 +185,15 @@ export default function Customers() {
                         <ActionButton tono="editar" onClick={() => openEdit(c)}>
                           Editar
                         </ActionButton>
-                        <ActionButton tono="eliminar" onClick={() => handleDelete(c)}>
+                        {/* El backend informa si el cliente se puede borrar,
+                            así que el botón se deshabilita con el motivo a la
+                            vista en lugar de fallar recién al confirmarlo. */}
+                        <ActionButton
+                          tono="eliminar"
+                          onClick={() => handleDelete(c)}
+                          disabled={c.can_delete === false}
+                          title={c.delete_blocked_reason ?? 'Eliminar el cliente'}
+                        >
                           Eliminar
                         </ActionButton>
                       </div>
@@ -200,7 +209,7 @@ export default function Customers() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TablaDesplazable>
         </div>
       )}
 

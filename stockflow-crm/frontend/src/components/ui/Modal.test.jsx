@@ -127,4 +127,56 @@ describe('Modal', () => {
     expect(campo).toHaveValue('ABC-123')
     expect(campo).toHaveFocus()
   })
+
+  describe('el foco no se escapa de la ventana', () => {
+    // Antes solo entraba al abrir: un Tab desde el último control saltaba al
+    // menú lateral, que queda detrás del velo y no se puede ver ni usar. Peor
+    // todavía, un Enter ahí navegaba a otra pantalla y se perdía el formulario.
+    function montarConCampos() {
+      return render(
+        <Modal title="Alta" onClose={() => {}}>
+          <input aria-label="Nombre" />
+          <button>Guardar</button>
+        </Modal>
+      )
+    }
+
+    it('desde el último control vuelve al primero', async () => {
+      const usuario = userEvent.setup()
+      montarConCampos()
+      const dialogo = screen.getByRole('dialog')
+
+      screen.getByRole('button', { name: 'Guardar' }).focus()
+      await usuario.tab()
+
+      expect(dialogo).toContainElement(document.activeElement)
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cerrar' }))
+    })
+
+    it('hacia atrás desde el primero va al último', async () => {
+      const usuario = userEvent.setup()
+      montarConCampos()
+
+      screen.getByRole('button', { name: 'Cerrar' }).focus()
+      await usuario.tab({ shift: true })
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Guardar' }))
+    })
+
+    it('los controles deshabilitados no reciben el foco', async () => {
+      const usuario = userEvent.setup()
+      render(
+        <Modal title="Alta" onClose={() => {}}>
+          <button>Guardar</button>
+          <button disabled>Confirmar</button>
+        </Modal>
+      )
+
+      screen.getByRole('button', { name: 'Guardar' }).focus()
+      await usuario.tab()
+
+      expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cerrar' }))
+    })
+  })
+
 })

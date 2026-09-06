@@ -267,3 +267,78 @@ class TestAislamientoDePedidos:
             "/orders", json={"customer_id": customer["id"]}, headers=other_org_headers
         )
         assert resp.status_code == 404
+
+
+class TestProductoRepetidoEnVariasLineas:
+    """
+    Agregar dos veces el mismo producto es lo más común que puede pasar: se
+    carga una línea, se olvida y se vuelve a cargar. El stock tiene que
+    contarse sumando el pedido entero, no línea por línea.
+    """
+
+    def test_no_se_puede_reservar_mas_de_lo_que_hay_entre_varias_lineas(
+        self, client, auth_headers, pending_order, make_product
+    ):
+        producto = make_product(sku="REP-1", current_stock="3.000")
+        linea = {"product_id": producto["id"], "quantity": "2.000", "unit_price": "10.00"}
+
+        primera = client.post(f"/orders/{pending_order['id']}/items", json=linea, headers=auth_headers)
+        assert primera.status_code == 200
+
+        segunda = client.post(f"/orders/{pending_order['id']}/items", json=linea, headers=auth_headers)
+        assert segunda.status_code == 400
+        detalle = segunda.json()["detail"]
+        # El mensaje tiene que explicar por qué no alcanza, si el stock a
+        # secas (3) es mayor que lo que se pide en esta línea (2).
+        assert "ya reserva 2" in detalle
+
+    def test_el_mensaje_de_confirmacion_informa_el_stock_real(
+        self, client, auth_headers, pending_order, make_product, db
+    ):
+        from app.models.order import OrderItem
+
+        producto = make_product(sku="REP-2", current_stock="1.000")
+        client.post(f"/orders/{pending_order['id']}/items", json={
+            "product_id": producto["id"], "quantity": "1.000", "unit_price": "10.00",
+        }, headers=auth_headers)
+        # Se agrega la segunda línea por debajo del endpoint para llegar al
+        # estado que antes producía el mensaje engañoso.
+        db.add(OrderItem(
+            order_id=pending_order["id"], product_id=producto["id"],
+            quantity=1.0, unit_price=10.0,
+        ))
+        db.commit()
+
+        resp = client.post(f"/orders/{pending_order['id']}/advance", headers=auth_headers)
+        assert resp.status_code == 400
+        detalle = resp.json()["detail"]
+        # Antes descontaba mientras validaba, así que informaba "quedan 0"
+        # cuando la pantalla de productos seguía mostrando 1.
+        assert "quedan 1" in detalle
+        assert "requiere 2" in detalle
+
+    def test_el_pedido_avanza_si_la_suma_entra_en_el_stock(
+        self, client, auth_headers, pending_order, make_product
+    ):
+        producto = make_product(sku="REP-3", current_stock="5.000")
+        linea = {"product_id": producto["id"], "quantity": "2.000", "unit_price": "10.00"}
+        client.post(f"/orders/{pending_order['id']}/items", json=linea, headers=auth_headers)
+        client.post(f"/orders/{pending_order['id']}/items", json=linea, headers=auth_headers)
+
+        resp = client.post(f"/orders/{pending_order['id']}/advance", headers=auth_headers)
+        assert resp.status_code == 200
+
+        producto_final = client.get(f"/products/{producto['id']}", headers=auth_headers).json()
+        assert float(producto_final["current_stock"]) == 1.0
+
+    def test_los_numeros_redondos_grandes_no_salen_en_notacion_cientifica(
+        self, client, auth_headers, pending_order, make_product
+    ):
+        producto = make_product(sku="REP-4", current_stock="1000.000")
+        resp = client.post(f"/orders/{pending_order['id']}/items", json={
+            "product_id": producto["id"], "quantity": "2000.000", "unit_price": "1.00",
+        }, headers=auth_headers)
+        assert resp.status_code == 400
+        detalle = resp.json()["detail"]
+        assert "quedan 1000" in detalle
+        assert "1E+3" not in detalle

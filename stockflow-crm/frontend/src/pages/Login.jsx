@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import client, { CLAVE_SESION_EXPIRADA } from '../api/client'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import client, { PARAM_EXPIRADA, PARAM_VOLVER } from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
@@ -30,14 +30,27 @@ export default function Login() {
   const [necesitaVerificar, setNecesitaVerificar] = useState(false)
   const [loading, setLoading] = useState(false)
   const [reenviando, setReenviando] = useState(false)
-  const [sesionExpirada, setSesionExpirada] = useState(false)
+  const [parametros] = useSearchParams()
+  const [sesionExpirada, setSesionExpirada] = useState(
+    () => parametros.get(PARAM_EXPIRADA) === '1'
+  )
 
+  // A dónde volver una vez que la persona vuelve a entrar. Solo se aceptan
+  // rutas propias: una URL completa acá sería un redirect abierto, un clásico
+  // para llevar a alguien a un sitio de phishing con un enlace que parece del
+  // sistema.
+  // Se calcula una sola vez: más abajo se limpia la barra de direcciones y el
+  // destino no debe depender de que ese borrado llegue o no al router.
+  const [volverA] = useState(() => {
+    const destino = parametros.get(PARAM_VOLVER)
+    if (!destino || !destino.startsWith('/') || destino.startsWith('//')) return '/'
+    return destino
+  })
+
+  // La marca ya se leyó: se saca de la barra de direcciones para que el aviso
+  // no reaparezca si la persona recarga o guarda el enlace.
   useEffect(() => {
-    // Lo deja puesto el interceptor del cliente HTTP cuando corta una sesión.
-    if (sessionStorage.getItem(CLAVE_SESION_EXPIRADA)) {
-      sessionStorage.removeItem(CLAVE_SESION_EXPIRADA)
-      setSesionExpirada(true)
-    }
+    if (window.location.search) window.history.replaceState({}, '', '/login')
   }, [])
 
   function actualizar(campo, valor) {
@@ -67,7 +80,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(email, password)
-      navigate('/')
+      navigate(volverA, { replace: true })
     } catch (err) {
       setError(getErrorMessage(err, 'No pudimos iniciar sesión.'))
       setErrores((previos) => ({ ...previos, ...getFieldErrors(err) }))

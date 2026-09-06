@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage, getFieldErrors } from '../api/errors'
+import TablaDesplazable from '../components/ui/TablaDesplazable'
 import ActionButton from '../components/ui/ActionButton'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import FormField from '../components/ui/FormField'
@@ -183,7 +184,7 @@ export default function Users() {
               desplazamiento, y sin eso `sticky` no tendría contra qué fijarse.
               Con pocos usuarios no scrollea y no se nota; con muchos, el
               encabezado y tu propia cuenta quedan siempre a la vista. */}
-          <div className="max-h-[70vh] overflow-auto">
+          <TablaDesplazable className="max-h-[70vh] overflow-y-auto">
             <table className="w-full min-w-[640px] text-sm">
               <thead className="text-xs uppercase tracking-wide text-tx-muted">
                 <tr>
@@ -315,7 +316,7 @@ export default function Users() {
                 })}
               </tbody>
             </table>
-          </div>
+          </TablaDesplazable>
         </div>
       )}
 

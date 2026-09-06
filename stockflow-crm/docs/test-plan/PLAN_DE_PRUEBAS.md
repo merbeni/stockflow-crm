@@ -74,9 +74,9 @@ son las que encuentran los problemas que las otras no ven.
                   ├───────────────────────────────┤
                   │  UX, accesibilidad, contraste │  ← calidad percibida
                   ├───────────────────────────────┤
-                  │  Integración de la API (HTTP) │  ← 204 pruebas automatizadas
+                  │  Integración de la API (HTTP) │  ← 212 pruebas automatizadas
                   ├───────────────────────────────┤
-                  │  Unitarias front y componentes│  ← 55 pruebas automatizadas
+                  │  Unitarias front y componentes│  ← 63 pruebas automatizadas
                   └───────────────────────────────┘
 ```
 
@@ -172,9 +172,9 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 
 | Suite | Archivos | Casos | Resultado |
 |-------|----------|-------|-----------|
-| Backend (pytest) | 8 | 204 | ✅ Todos en verde |
-| Frontend (Vitest) | 9 | 55 | ✅ Todos en verde |
-| **Total** | **17** | **259** | ✅ |
+| Backend (pytest) | 8 | 212 | ✅ Todos en verde |
+| Frontend (Vitest) | 10 | 63 | ✅ Todos en verde |
+| **Total** | **18** | **275** | ✅ |
 
 ### 7.1 Desglose del backend por módulo
 
@@ -183,9 +183,9 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 | `test_auth.py` | 35 | Alta, verificación de correo, login, sesión, roles |
 | `test_products.py` | 37 | ABM, SKU único, stock decimal, límites numéricos, borrado |
 | `test_invoices.py` | 37 | Procesamiento, confirmación, rechazo, alta desde factura, errores de Gemini |
-| `test_orders.py` | 26 | Líneas, máquina de estados, stock insuficiente, correo |
-| `test_customers.py` | 22 | ABM, historial, borrado con pedidos |
-| `test_suppliers.py` | 18 | ABM, validaciones de contacto, aislamiento |
+| `test_orders.py` | 30 | Líneas, máquina de estados, stock insuficiente, producto repetido, correo |
+| `test_customers.py` | 24 | ABM, historial, borrado bloqueado por pedidos |
+| `test_suppliers.py` | 20 | ABM, validaciones de contacto, aislamiento, borrado bloqueado por facturas |
 | `test_stock_movements.py` | 19 | Registro automático, trazabilidad, filtros |
 | `test_security.py` | 10 | Hash de contraseñas, firma de tokens y CORS en errores no controlados |
 
@@ -193,7 +193,7 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 
 | Archivo | Casos | Foco |
 |---------|-------|------|
-| `ui/Modal.test.jsx` | 13 | Comportamiento y **accesibilidad** del diálogo |
+| `ui/Modal.test.jsx` | 16 | Comportamiento y **accesibilidad** del diálogo, incluida la retención del foco |
 | `ui/Badge.test.jsx` | 10 | Indicadores de estado y de confianza de la IA |
 | `context/AuthContext.test.jsx` | 7 | Sesión, persistencia del token, cierre de sesión |
 | `api/errors.test.js` | 9 | Traducción de errores del backend a mensajes de campo |
@@ -202,6 +202,7 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 | `ErrorBoundary.test.jsx` | 2 | La aplicación no queda en blanco ante un error |
 | `Layout.test.jsx` | 3 | Menú lateral en móvil: alternancia, `aria-controls` y foco |
 | `pages/Invoices.archivo.test.js` | 5 | Límites de tipo y peso del archivo antes de subirlo |
+| `pages/Login.sesion.test.jsx` | 5 | Aviso de sesión vencida y regreso a la pantalla donde estaba |
 
 > **Cómo leer estos números.** La cantidad de pruebas no mide calidad por sí sola: una suite
 > puede tener 200 casos y no probar nada relevante. Lo que importa es la **proporción de
@@ -749,6 +750,12 @@ organizaciones, escalada de privilegios, tokens falsificados y concurrencia.
 | DEF-28 | El `aria-controls` del menú apuntaba a un id **inexistente** mientras el menú estaba cerrado, porque el cajón se montaba solo al abrirse | Baja | Pruebas exploratorias | ✅ Corregido — el cajón se monta siempre y se oculta con `hidden`, que además lo saca del orden de tabulación |
 | DEF-29 | En Pedidos, el error de la página quedaba visible detrás del modal de línea: dos carteles rojos a la vez sobre cosas distintas | Baja | Pruebas exploratorias | ✅ Corregido — se retira al abrir la ventana |
 | DEF-30 | `Products.jsx` llamaba a `setErrores` **dentro** del actualizador de `setForm`. React exige que esos actualizadores sean puros y puede invocarlos más de una vez | Baja | Revisión de código | ✅ Corregido — el objeto se calcula fuera del actualizador |
+| DEF-31 | Con el mismo producto en dos líneas, confirmar el pedido informaba **«quedan 0»** de un producto que la pantalla de productos mostraba con 1. Validaba línea por línea mientras descontaba, así que el número del mensaje era un estado intermedio en memoria | **Grave** | Pruebas exploratorias con navegador | ✅ Corregido — se suma lo que pide el pedido entero antes de comparar, y el alta de línea cuenta lo ya reservado |
+| DEF-32 | Las cantidades redondas de cuatro cifras o más salían en **notación científica** dentro de los mensajes: «quedan 1E+3». `Decimal.normalize()` cambia de formato al quitar los ceros de relleno | Media | Pruebas exploratorias | ✅ Corregido — un formateador común en `stock_rules`, usado en los seis mensajes que informaban cantidades |
+| DEF-33 | El aviso de sesión vencida **nunca llegaba a verse**. Viajaba en `sessionStorage`, pero la redirección del interceptor es una navegación completa: mientras el navegador la resolvía, React montaba un login dentro de la página vieja que consumía la marca y se destruía enseguida | Media | Pruebas exploratorias | ✅ Corregido — el motivo viaja en la URL, y además se vuelve a la pantalla donde estaba (rechazando destinos externos) |
+| DEF-34 | Borrar un cliente con pedidos —o un proveedor con facturas— devolvía el mensaje genérico de integridad referencial: «hay información relacionada que depende de este registro», que no dice qué depende ni qué hacer. Productos ya lo resolvía bien; clientes y proveedores no | Media | Pruebas exploratorias | ✅ Corregido — mismo patrón que productos: el motivo se calcula, el botón queda deshabilitado y lo explica |
+| DEF-35 | La ventana modal llevaba el foco adentro al abrirse pero **no lo retenía**: un Tab desde el último control saltaba al menú lateral, que queda detrás del velo. Un Enter ahí navegaba a otra pantalla y se perdía el formulario a medio cargar | Media | Pruebas exploratorias | ✅ Corregido — el foco circula dentro del diálogo en ambos sentidos |
+| DEF-36 | En un teléfono, las tablas se cortaban en la columna de acciones **sin ninguna señal** de que se podían desplazar: el listado parecía no tener botones | Baja | Pruebas exploratorias | ✅ Corregido — el borde con contenido oculto se sombrea y la sombra desaparece al llegar al final |
 
 ### 13.3 Pruebas de regresión agregadas
 
@@ -770,6 +777,11 @@ Cada defecto dejó su prueba:
 | DEF-25 | `test_el_500_conserva_las_cabeceras_cors`, `test_no_refleja_un_origen_no_permitido` |
 | DEF-26 | `problemaDelArchivo` (5 casos, incluido el límite exacto de 20 MB) |
 | DEF-27 / DEF-28 | `el_botón_alterna_no_solo_abre`, `aria-controls_apunta_a_un_elemento_que_existe`, `con_el_menú_cerrado_sus_enlaces_no_reciben_el_foco` |
+| DEF-31 | `test_no_se_puede_reservar_mas_de_lo_que_hay_entre_varias_lineas`, `test_el_mensaje_de_confirmacion_informa_el_stock_real`, `test_el_pedido_avanza_si_la_suma_entra_en_el_stock` |
+| DEF-32 | `test_los_numeros_redondos_grandes_no_salen_en_notacion_cientifica` |
+| DEF-33 | `explica_por_qué_apareció_el_login`, `devuelve_a_la_pantalla_donde_estaba_trabajando`, `ignora_un_destino_externo`, `tampoco_sigue_un_destino_con_doble_barra` |
+| DEF-34 | `test_no_se_borra_y_el_mensaje_nombra_los_pedidos`, `test_no_se_borra_y_el_mensaje_nombra_las_facturas`, `test_el_listado_avisa_que_no_se_puede_borrar` (clientes y proveedores) |
+| DEF-35 | `desde_el_último_control_vuelve_al_primero`, `hacia_atrás_desde_el_primero_va_al_último`, `los_controles_deshabilitados_no_reciben_el_foco` |
 
 > **DEF-03, DEF-07 y DEF-08 no tienen prueba automatizada.** Son propiedades del marcado
 > —que un campo tenga su etiqueta asociada, que exista una regla de foco— que se verifican
@@ -780,8 +792,8 @@ Cada defecto dejó su prueba:
 
 Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba conviene sostener:
 
-- **Ninguno de los treinta apareció en las pruebas automatizadas existentes.** La suite estaba
-  en verde con los treinta defectos presentes. Una suite verde prueba que no se rompió lo que
+- **Ninguno de los treinta y seis apareció en las pruebas automatizadas existentes.** La suite
+  estaba en verde con los treinta y seis defectos presentes. Una suite verde prueba que no se rompió lo que
   ya se probaba; no prueba que el sistema esté bien.
 - **Ocho salieron del uso real** (DEF-01 a DEF-03, DEF-10 a DEF-12, DEF-14 y DEF-15). Son problemas que
   ninguna aserción sobre un código HTTP puede detectar: el sistema respondía 200 y hacía
@@ -793,7 +805,7 @@ Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba convi
   no se percibe a simple vista: hay que calcularlo. Una etiqueta al lado de su campo *se ve*
   igual que una etiqueta asociada a su campo; la diferencia solo aparece si se revisa el
   marcado o se navega con un lector de pantalla.
-- **Catorce salieron de manejar un navegador de verdad** (DEF-16 a DEF-29). Es, por lejos, la
+- **Veinte salieron de manejar un navegador de verdad** (DEF-16 a DEF-29 y DEF-31 a DEF-36). Es, por lejos, la
   fuente más productiva, y encuentra una clase entera que las otras no ven: defectos que solo
   existen cuando alguien **teclea, hace foco, sube un archivo o gira el teléfono**. Dos de los
   más graves del proyecto salieron de acá —el que dejaba entrar una sola letra por campo y el
@@ -802,8 +814,8 @@ Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba convi
 
 | Origen | Defectos | Qué tipo de problema encuentra |
 |--------|:--------:|-------------------------------|
-| Pruebas exploratorias con navegador | 14 | Lo que solo aparece al operar la interfaz de verdad |
-| Uso real por otra persona | 6 | Lo que está mal aunque funcione |
+| Pruebas exploratorias con navegador | 20 | Lo que solo aparece al operar la interfaz de verdad |
+| Uso real por otra persona | 8 | Lo que está mal aunque funcione |
 | Auditoría medida (contraste, marcado) | 4 | Lo que no se ve mirando |
 | Pruebas adversariales sobre la API | 2 | Lo que nadie pensó al programar |
 | Revisión de código | 1 | Suposiciones que todavía no fallaron pero van a fallar |
@@ -819,7 +831,7 @@ Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba convi
 
 Los orígenes encuentran cosas distintas y ninguno reemplaza a los otros. De ahí que este
 plan tenga varias capas y no una. El renglón de la suite automatizada en cero no es un
-reproche: su trabajo es que ninguno de estos veintitrés vuelva, y para eso sí es insustituible.
+reproche: su trabajo es que ninguno de estos treinta y seis vuelva, y para eso sí es insustituible.
 
 **El uso real es, por lejos, la fuente más productiva.** Casi la mitad de los defectos
 salieron de que otra persona usara el sistema con datos propios, y son los de mayor

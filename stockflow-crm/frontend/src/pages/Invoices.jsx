@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import client from '../api/client'
 import { getErrorMessage } from '../api/errors'
+import TablaDesplazable from '../components/ui/TablaDesplazable'
 import Badge from '../components/ui/Badge'
 import ErrorBanner from '../components/ui/ErrorBanner'
 import Modal from '../components/ui/Modal'
@@ -972,7 +973,7 @@ export default function Invoices() {
         <p className="text-sm text-tx-muted">Cargando…</p>
       ) : (
         <div className="overflow-hidden rounded-xl border border-brand-border bg-surface shadow">
-          <div className="overflow-x-auto">
+          <TablaDesplazable>
             <table className="w-full min-w-[520px] text-sm">
               <thead className="border-b border-brand-border bg-sidebar text-xs uppercase tracking-wide text-tx-muted">
                 <tr>
@@ -1022,7 +1023,7 @@ export default function Invoices() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TablaDesplazable>
         </div>
       )}
 
@@ -1043,7 +1044,7 @@ export default function Invoices() {
               </span>
             </div>
             {detailModal.items?.length > 0 && (
-              <div className="overflow-x-auto rounded-lg border border-brand-border">
+              <TablaDesplazable className="rounded-lg border border-brand-border">
                 <table className="w-full text-xs">
                   <thead className="bg-sidebar text-tx-muted">
                     <tr>
@@ -1098,7 +1099,7 @@ export default function Invoices() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TablaDesplazable>
             )}
           </div>
         </Modal>
