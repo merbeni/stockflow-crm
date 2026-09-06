@@ -129,6 +129,10 @@ export default function Users() {
     }
   }
 
+  // Cuántos administradores activos quedan: si es uno solo, no se le ofrecen
+  // las acciones que dejarían a la organización sin ningún administrador.
+  const adminsActivos = usuarios.filter((u) => u.role === 'admin' && u.is_active).length
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -174,6 +178,11 @@ export default function Users() {
               <tbody className="divide-y divide-gray-100">
                 {usuarios.map((u) => {
                   const esUnoMismo = u.id === usuarioActual?.id
+                  // La organización no puede quedarse sin administradores activos:
+                  // si este es el único, no se le ofrecen las acciones que lo
+                  // dejarían sin ese rol (el backend además las rechaza).
+                  const esUnicoAdmin =
+                    u.role === 'admin' && u.is_active && adminsActivos === 1
                   return (
                     <tr key={u.id} className={u.is_active ? '' : 'bg-gray-50 opacity-60'}>
                       <td className="px-4 py-3 font-medium text-tx-primary">
@@ -205,34 +214,45 @@ export default function Users() {
                         )}
                       </td>
                       <td className="space-x-3 px-4 py-3 text-right">
-                        <button
-                          onClick={() =>
-                            cambiar(
-                              u,
-                              { role: u.role === 'admin' ? 'operator' : 'admin' },
-                              `${u.email} ahora es ${
-                                u.role === 'admin' ? 'operador' : 'administrador'
-                              }.`
-                            )
-                          }
-                          className="text-xs text-primary-text hover:underline"
-                        >
-                          {u.role === 'admin' ? 'Hacer operador' : 'Hacer administrador'}
-                        </button>
-                        <button
-                          onClick={() =>
-                            cambiar(
-                              u,
-                              { is_active: !u.is_active },
-                              `${u.email} quedó ${u.is_active ? 'desactivado' : 'activo'}.`
-                            )
-                          }
-                          className={`text-xs hover:underline ${
-                            u.is_active ? 'text-amber-500' : 'text-green-600'
-                          }`}
-                        >
-                          {u.is_active ? 'Desactivar' : 'Activar'}
-                        </button>
+                        {esUnicoAdmin ? (
+                          <span
+                            className="cursor-help text-xs italic text-tx-muted"
+                            title="La organización tiene que conservar al menos un administrador activo. Asigná el rol de administrador a otra persona para poder cambiar o desactivar esta cuenta."
+                          >
+                            Único administrador
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() =>
+                                cambiar(
+                                  u,
+                                  { role: u.role === 'admin' ? 'operator' : 'admin' },
+                                  `${u.email} ahora es ${
+                                    u.role === 'admin' ? 'operador' : 'administrador'
+                                  }.`
+                                )
+                              }
+                              className="text-xs text-primary-text hover:underline"
+                            >
+                              {u.role === 'admin' ? 'Hacer operador' : 'Hacer administrador'}
+                            </button>
+                            <button
+                              onClick={() =>
+                                cambiar(
+                                  u,
+                                  { is_active: !u.is_active },
+                                  `${u.email} quedó ${u.is_active ? 'desactivado' : 'activo'}.`
+                                )
+                              }
+                              className={`text-xs hover:underline ${
+                                u.is_active ? 'text-amber-500' : 'text-green-600'
+                              }`}
+                            >
+                              {u.is_active ? 'Desactivar' : 'Activar'}
+                            </button>
+                          </>
+                        )}
                         {!esUnoMismo && (
                           <button
                             onClick={() => eliminar(u)}

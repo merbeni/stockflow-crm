@@ -60,13 +60,15 @@ def signup(payload: SignupRequest, background_tasks: BackgroundTasks, db: Sessio
         phone=payload.phone,
     )
 
+    # Solo se envía el correo de verificación. La bienvenida se manda recién
+    # cuando el usuario confirma su dirección: hasta entonces no puede iniciar
+    # sesión, y recibir los dos correos a la vez resultaba contradictorio.
     background_tasks.add_task(
         send_verification_email,
         user_email=user.email,
         token=token,
         organization_name=organization.name,
     )
-    background_tasks.add_task(send_welcome_email, user_email=user.email)
 
     return SignupResponse(
         message=_MENSAJE_VERIFICACION,
@@ -76,7 +78,11 @@ def signup(payload: SignupRequest, background_tasks: BackgroundTasks, db: Sessio
 
 
 @router.get("/verify-email", response_model=MessageResponse)
-def verify_email(token: str = Query(..., min_length=10), db: Session = Depends(get_db)):
+def verify_email(
+    background_tasks: BackgroundTasks,
+    token: str = Query(..., min_length=10),
+    db: Session = Depends(get_db),
+):
     user = verify_email_token(db, token)
     if not user:
         raise DomainError(
@@ -84,6 +90,10 @@ def verify_email(token: str = Query(..., min_length=10), db: Session = Depends(g
             "Pedí uno nuevo desde la pantalla de inicio de sesión.",
             field="token",
         )
+
+    # Ahora sí la cuenta puede operar, así que la bienvenida es correcta.
+    background_tasks.add_task(send_welcome_email, user_email=user.email)
+
     return MessageResponse(
         message="¡Listo! Tu correo quedó verificado. Ya podés iniciar sesión."
     )

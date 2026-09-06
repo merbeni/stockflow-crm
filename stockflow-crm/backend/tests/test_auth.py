@@ -120,6 +120,21 @@ class TestVerificacionDeCorreo:
         assert conocida.status_code == desconocida.status_code == 200
         assert conocida.json() == desconocida.json()
 
+    def test_la_bienvenida_se_envia_al_verificar_y_no_al_registrarse(self, client, mocker):
+        """
+        Al registrarse llegaban dos correos a la vez: el de verificación y uno de
+        bienvenida que invitaba a iniciar sesión. Era contradictorio, porque hasta
+        confirmar la dirección el login está bloqueado.
+        """
+        bienvenida = mocker.patch("app.routers.auth.send_welcome_email")
+
+        client.post("/auth/signup", json=ALTA_VALIDA)
+        assert bienvenida.call_count == 0, "no debe enviarse al registrarse"
+
+        token = self._token_de("ana@test.com")
+        assert client.get("/auth/verify-email", params={"token": token}).status_code == 200
+        bienvenida.assert_called_once_with(user_email="ana@test.com")
+
 
 class TestLogin:
     def test_login_correcto_devuelve_token(self, client):
