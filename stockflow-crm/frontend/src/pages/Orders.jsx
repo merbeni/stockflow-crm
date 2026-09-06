@@ -95,6 +95,12 @@ export default function Orders() {
     setItemForm({ product_id: '', quantity: '', unit_price: '' })
     setItemErrores({})
     setItemError('')
+    // El error de la página se retira al abrir la ventana. Si no, un fallo
+    // anterior —«no se puede confirmar un pedido sin productos», por ejemplo—
+    // quedaba visible detrás del modal mientras este mostraba el suyo: dos
+    // carteles rojos a la vez, sobre cosas distintas, y ninguno de los dos
+    // deja claro a cuál corresponde lo que se está haciendo ahora.
+    setError('')
     setItemModal(order)
   }
 
@@ -164,6 +170,9 @@ export default function Orders() {
         <button
           onClick={() => {
             setCreateError('')
+            // Mismo criterio que al agregar una línea: el error de la página no
+            // debe quedar detrás de la ventana que se acaba de abrir.
+            setError('')
             setCreateModal(true)
           }}
           className="rounded-lg bg-secondary px-4 py-2 text-sm font-medium text-secondary-text transition hover:bg-secondary-dark"

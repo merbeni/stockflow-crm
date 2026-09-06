@@ -277,7 +277,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(Exception)
-    async def _unhandled_handler(_: Request, exc: Exception):
+    async def _unhandled_handler(request: Request, exc: Exception):
         logger.exception("Error no controlado: %s", exc)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -285,4 +285,33 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "detail": "Ocurrió un error inesperado. Por favor intentá nuevamente.",
                 "errors": {},
             },
+            headers=_cabeceras_cors(request),
         )
+
+
+def _cabeceras_cors(request: Request) -> dict[str, str]:
+    """
+    Repone las cabeceras CORS en la respuesta de error no controlado.
+
+    Este handler no las recibe solas. En Starlette el manejador genérico de
+    ``Exception`` corre en ``ServerErrorMiddleware``, que está **por fuera** de
+    ``CORSMiddleware``, así que su respuesta salía sin ``Allow-Origin``. El
+    navegador entonces la bloqueaba, el cliente no veía ninguna respuesta y le
+    mostraba al usuario "No se pudo conectar con el servidor": un error del
+    servidor terminaba disfrazado de problema de red del usuario, que es
+    justo el diagnóstico contrario.
+
+    Solo se refleja el origen si está entre los permitidos: copiarlo sin
+    comprobar convertiría este camino en un agujero que no tiene el resto de
+    la aplicación.
+    """
+    from app.core.config import settings
+
+    origen = request.headers.get("origin")
+    if origen and origen in settings.cors_origins_list:
+        return {
+            "Access-Control-Allow-Origin": origen,
+            "Access-Control-Allow-Credentials": "true",
+            "Vary": "Origin",
+        }
+    return {}

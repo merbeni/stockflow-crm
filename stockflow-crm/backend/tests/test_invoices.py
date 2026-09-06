@@ -116,6 +116,68 @@ class TestProcessInvoice:
         # El detalle técnico no debe llegar al navegador.
         assert "Gemini" not in detail and "html" not in detail
 
+    def _error_de_gemini(self, mocker, codigo, mensaje):
+        """Simula un 4xx de Gemini sin construir la excepción a mano."""
+        from google.genai.errors import ClientError
+
+        error = ClientError.__new__(ClientError)
+        error.code = codigo
+        error.message = mensaje
+        error.status = "INVALID_ARGUMENT"
+        error.details = None
+        error.response = None
+        mocker.patch(
+            "app.services.invoice.invoice_service.process_invoice_file",
+            side_effect=error,
+        )
+
+    def test_documento_ilegible_da_422_y_no_error_de_servidor(
+        self, client, auth_headers, mocker
+    ):
+        """
+        Gemini responde 400 cuando el archivo no le sirve —un PDF dañado, vacío
+        o protegido devuelve "The document has no pages"—. Ese ClientError no
+        estaba capturado y escapaba como 500: el usuario veía "error del
+        sistema" cuando el problema estaba en su archivo y podía resolverlo.
+        """
+        self._error_de_gemini(mocker, 400, "The document has no pages.")
+        resp = client.post(
+            "/invoices/process",
+            files={"file": ("invoice.pdf", _PDF_VALIDO, "application/pdf")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 422, "un archivo ilegible no es una falla del servidor"
+        detail = resp.json()["detail"]
+        assert "dañado" in detail or "vacío" in detail
+        # El texto de Google no debe llegar al navegador.
+        assert "document has no pages" not in detail.lower()
+        assert resp.json()["errors"].get("file")
+
+    def test_cuota_de_gemini_agotada_se_trata_como_servicio_ocupado(
+        self, client, auth_headers, mocker
+    ):
+        """Un 429 es "volvé a intentar", no un archivo mal: el frontend reintenta solo."""
+        self._error_de_gemini(mocker, 429, "Resource has been exhausted.")
+        resp = client.post(
+            "/invoices/process",
+            files={"file": ("invoice.pdf", _PDF_VALIDO, "application/pdf")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 503
+
+    def test_credenciales_mal_configuradas_no_culpan_al_usuario(
+        self, client, auth_headers, mocker
+    ):
+        """Un 403 es un problema nuestro: no se le pide al usuario que corrija nada."""
+        self._error_de_gemini(mocker, 403, "API key not valid.")
+        resp = client.post(
+            "/invoices/process",
+            files={"file": ("invoice.pdf", _PDF_VALIDO, "application/pdf")},
+            headers=auth_headers,
+        )
+        assert resp.status_code == 502
+        assert "API key" not in resp.json()["detail"]
+
 
 class TestValidacionDeDocumento:
     """

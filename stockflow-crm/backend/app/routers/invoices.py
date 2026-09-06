@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile, File, status
-from google.genai.errors import ServerError
+from google.genai.errors import ClientError, ServerError
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_org_id, get_current_user
@@ -96,6 +96,36 @@ async def process(
         raise DomainError(
             "El servicio de lectura automática no está disponible en este momento. "
             "Intentá de nuevo en unos minutos.",
+            status_code=status.HTTP_502_BAD_GATEWAY,
+        )
+    except ClientError as exc:
+        # Gemini responde 4xx cuando el pedido en sí no le sirve. Sin este bloque
+        # la excepción escapaba y el usuario recibía un 500: un PDF corrupto o
+        # sin páginas terminaba reportado como una falla del sistema, cuando el
+        # problema estaba en el archivo y él podía resolverlo.
+        if exc.code == 429:
+            # Cuota agotada. Es el mismo caso de "volvé a intentar" que el 503,
+            # así que se reusa ese código y el frontend reintenta solo.
+            logger.warning("Cuota de Gemini agotada")
+            raise DomainError(
+                "gemini_unavailable",
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        if exc.code in (400, 422):
+            logger.info("Gemini no pudo leer el documento: %s", exc)
+            raise DomainError(
+                "No pudimos leer el archivo: puede estar dañado, vacío o "
+                "protegido con contraseña. Abrilo para comprobar que se ve bien "
+                "y volvé a subirlo, o probá con una foto del comprobante.",
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                field="file",
+            )
+        # 401 y 403 son credenciales mal configuradas: problema nuestro, no del
+        # usuario, así que no se le pide que corrija nada.
+        logger.exception("Gemini rechazó la petición")
+        raise DomainError(
+            "El servicio de lectura automática no está disponible en este "
+            "momento. Intentá de nuevo en unos minutos.",
             status_code=status.HTTP_502_BAD_GATEWAY,
         )
     except ValueError as exc:

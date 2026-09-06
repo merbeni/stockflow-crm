@@ -74,9 +74,9 @@ son las que encuentran los problemas que las otras no ven.
                   ├───────────────────────────────┤
                   │  UX, accesibilidad, contraste │  ← calidad percibida
                   ├───────────────────────────────┤
-                  │  Integración de la API (HTTP) │  ← 199 pruebas automatizadas
+                  │  Integración de la API (HTTP) │  ← 204 pruebas automatizadas
                   ├───────────────────────────────┤
-                  │  Unitarias front y componentes│  ← 47 pruebas automatizadas
+                  │  Unitarias front y componentes│  ← 55 pruebas automatizadas
                   └───────────────────────────────┘
 ```
 
@@ -172,9 +172,9 @@ más con menos casos y se justifica por qué **ese** valor y no otro.
 
 | Suite | Archivos | Casos | Resultado |
 |-------|----------|-------|-----------|
-| Backend (pytest) | 8 | 199 | ✅ Todos en verde |
+| Backend (pytest) | 8 | 204 | ✅ Todos en verde |
 | Frontend (Vitest) | 7 | 47 | ✅ Todos en verde |
-| **Total** | **15** | **246** | ✅ |
+| **Total** | **17** | **259** | ✅ |
 
 ### 7.1 Desglose del backend por módulo
 
@@ -740,6 +740,13 @@ organizaciones, escalada de privilegios, tokens falsificados y concurrencia.
 | DEF-21 | En Movimientos, un rango de fechas inválido dejaba en pantalla el error anterior del servidor junto al nuevo: dos carteles rojos diciendo cosas distintas | Baja | Pruebas exploratorias | ✅ Corregido — se limpia el error previo al cortar la consulta |
 | DEF-22 | El botón «Reenviarme el correo de verificación» no se deshabilitaba mientras enviaba: admitía pulsaciones repetidas | Baja | Pruebas exploratorias | ✅ Corregido |
 | DEF-23 | El botón del menú en móvil no informaba `aria-expanded` y su etiqueta seguía diciendo «Abrir menú» con el menú ya abierto | Baja | Pruebas exploratorias | ✅ Corregido |
+| DEF-24 | Un PDF dañado o vacío hacía que Gemini respondiera `400 INVALID_ARGUMENT`. Ese `ClientError` no estaba capturado y escapaba como **error 500**: el usuario leía «error del sistema» cuando el problema estaba en su archivo y podía resolverlo | **Grave** | Pruebas exploratorias | ✅ Corregido — 422 con instrucciones; 429 se trata como servicio ocupado y 401/403 como problema de configuración |
+| DEF-25 | El manejador general de errores devolvía el 500 **sin cabeceras CORS**: el navegador lo bloqueaba, el cliente no veía respuesta alguna y le decía al usuario «No se pudo conectar con el servidor». Un fallo del servidor quedaba disfrazado de problema de red del usuario | **Grave** | Pruebas exploratorias | ✅ Corregido — el manejador repone las cabeceras, reflejando solo orígenes permitidos |
+| DEF-26 | El panel de subida prometía «Máximo 20 MB» pero no comprobaba nada: un archivo de 21 MB se subía entero antes de ser rechazado | Media | Pruebas exploratorias | ✅ Corregido — se valida tipo y peso en el navegador, sin enviar nada |
+| DEF-27 | El botón del menú en móvil hacía `setOpen(true)` siempre: **nunca cerraba**, aunque su etiqueta dijera «Cerrar menú». Con el mouse no se notaba porque el cajón lo tapa; por teclado sí se llega | Media | Pruebas exploratorias | ✅ Corregido — alterna el estado |
+| DEF-28 | El `aria-controls` del menú apuntaba a un id **inexistente** mientras el menú estaba cerrado, porque el cajón se montaba solo al abrirse | Baja | Pruebas exploratorias | ✅ Corregido — el cajón se monta siempre y se oculta con `hidden`, que además lo saca del orden de tabulación |
+| DEF-29 | En Pedidos, el error de la página quedaba visible detrás del modal de línea: dos carteles rojos a la vez sobre cosas distintas | Baja | Pruebas exploratorias | ✅ Corregido — se retira al abrir la ventana |
+| DEF-30 | `Products.jsx` llamaba a `setErrores` **dentro** del actualizador de `setForm`. React exige que esos actualizadores sean puros y puede invocarlos más de una vez | Baja | Revisión de código | ✅ Corregido — el objeto se calcula fuera del actualizador |
 
 ### 13.3 Pruebas de regresión agregadas
 
@@ -757,6 +764,10 @@ Cada defecto dejó su prueba:
 | DEF-11 | `test_el_detalle_marca_las_lineas_omitidas_de_la_factura` |
 | DEF-16 | `deja_escribir_más_de_un_carácter_en_un_campo_controlado`, `no_le_roba_el_foco_al_campo_mientras_se_escribe` |
 | DEF-17 | `test_el_mensaje_del_limite_dice_cual_es_el_limite` |
+| DEF-24 | `test_documento_ilegible_da_422_y_no_error_de_servidor`, `test_cuota_de_gemini_agotada_se_trata_como_servicio_ocupado`, `test_credenciales_mal_configuradas_no_culpan_al_usuario` |
+| DEF-25 | `test_el_500_conserva_las_cabeceras_cors`, `test_no_refleja_un_origen_no_permitido` |
+| DEF-26 | `problemaDelArchivo` (5 casos, incluido el límite exacto de 20 MB) |
+| DEF-27 / DEF-28 | `el_botón_alterna_no_solo_abre`, `aria-controls_apunta_a_un_elemento_que_existe`, `con_el_menú_cerrado_sus_enlaces_no_reciben_el_foco` |
 
 > **DEF-03, DEF-07 y DEF-08 no tienen prueba automatizada.** Son propiedades del marcado
 > —que un campo tenga su etiqueta asociada, que exista una regla de foco— que se verifican
@@ -767,8 +778,8 @@ Cada defecto dejó su prueba:
 
 Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba conviene sostener:
 
-- **Ninguno de los veintitrés apareció en las pruebas automatizadas existentes.** La suite estaba
-  en verde con los veintitrés defectos presentes. Una suite verde prueba que no se rompió lo que
+- **Ninguno de los treinta apareció en las pruebas automatizadas existentes.** La suite estaba
+  en verde con los treinta defectos presentes. Una suite verde prueba que no se rompió lo que
   ya se probaba; no prueba que el sistema esté bien.
 - **Ocho salieron del uso real** (DEF-01 a DEF-03, DEF-10 a DEF-12, DEF-14 y DEF-15). Son problemas que
   ninguna aserción sobre un código HTTP puede detectar: el sistema respondía 200 y hacía
@@ -780,13 +791,20 @@ Vale la pena mirar **de dónde salieron**, porque dice qué tipo de prueba convi
   no se percibe a simple vista: hay que calcularlo. Una etiqueta al lado de su campo *se ve*
   igual que una etiqueta asociada a su campo; la diferencia solo aparece si se revisa el
   marcado o se navega con un lector de pantalla.
+- **Catorce salieron de manejar un navegador de verdad** (DEF-16 a DEF-29). Es, por lejos, la
+  fuente más productiva, y encuentra una clase entera que las otras no ven: defectos que solo
+  existen cuando alguien **teclea, hace foco, sube un archivo o gira el teléfono**. Dos de los
+  más graves del proyecto salieron de acá —el que dejaba entrar una sola letra por campo y el
+  que disfrazaba un error del servidor de problema de red— y ninguno era detectable desde la
+  API ni leyendo el código.
 
 | Origen | Defectos | Qué tipo de problema encuentra |
 |--------|:--------:|-------------------------------|
-| Pruebas exploratorias con navegador | 8 | Lo que solo aparece al operar la interfaz de verdad |
+| Pruebas exploratorias con navegador | 14 | Lo que solo aparece al operar la interfaz de verdad |
 | Uso real por otra persona | 6 | Lo que está mal aunque funcione |
 | Auditoría medida (contraste, marcado) | 4 | Lo que no se ve mirando |
 | Pruebas adversariales sobre la API | 2 | Lo que nadie pensó al programar |
+| Revisión de código | 1 | Suposiciones que todavía no fallaron pero van a fallar |
 | Revisión de usabilidad | 1 | Lo que cuesta más de lo necesario |
 | Suite automatizada | 0 | Lo que ya se había roto antes |
 

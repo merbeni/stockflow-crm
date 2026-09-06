@@ -11,6 +11,24 @@ import {
   telefono as validarTelefono,
 } from '../utils/validation'
 
+// Mismos límites que aplica el backend. Duplicarlos acá no reemplaza aquella
+// validación —el servidor sigue siendo la autoridad, y además comprueba que el
+// contenido del archivo coincida con su extensión, cosa que el navegador no
+// puede hacer—, pero evita subir 20 MB para recibir un rechazo previsible.
+const TIPOS_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+const TAMANO_MAXIMO = 20 * 1024 * 1024
+
+export function problemaDelArchivo(archivo) {
+  if (!TIPOS_PERMITIDOS.includes(archivo.type)) {
+    return 'Ese formato no sirve. Subí la factura en PDF, JPG, PNG o WEBP.'
+  }
+  if (archivo.size > TAMANO_MAXIMO) {
+    const mb = (archivo.size / 1024 / 1024).toFixed(1)
+    return `El archivo pesa ${mb} MB y el máximo es 20 MB. Probá con el PDF original o con una imagen de menor resolución.`
+  }
+  return null
+}
+
 // ── Paso de carga ─────────────────────────────────────────────────────────────
 function UploadStep({ onProcessed, onCancel }) {
   const [file, setFile] = useState(null)
@@ -24,6 +42,19 @@ function UploadStep({ onProcessed, onCancel }) {
 
   function pickFile(picked) {
     if (previewUrl) URL.revokeObjectURL(previewUrl)
+
+    // El backend rechaza igual lo que no cumple, pero recién después de recibir
+    // el archivo entero: con una factura escaneada pesada eso es una espera
+    // larga para un error que se podía ver de entrada. Se comprueba acá lo que
+    // el navegador ya sabe sin subir nada.
+    const problema = picked ? problemaDelArchivo(picked) : null
+    if (problema) {
+      setFile(null)
+      setPreviewUrl(null)
+      setError(problema)
+      return
+    }
+
     setFile(picked ?? null)
     setPreviewUrl(picked ? URL.createObjectURL(picked) : null)
     setError('')

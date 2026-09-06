@@ -109,18 +109,24 @@ export default function Layout() {
         <SidebarContent {...sidebarProps} onClose={() => {}} />
       </aside>
 
-      {/* Cajón lateral en móvil */}
-      {open && (
-        <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside
-            id="menu-lateral"
-            className="absolute left-0 top-0 z-50 flex h-full w-64 flex-col border-r border-brand-border bg-sidebar"
-          >
-            <SidebarContent {...sidebarProps} onClose={() => setOpen(false)} />
-          </aside>
-        </div>
-      )}
+      {/* Cajón lateral en móvil.
+
+          El contenedor se monta siempre y se oculta con `hidden` en lugar de
+          quitarse del árbol. El motivo es el `aria-controls` del botón: si el
+          panel no existe mientras está cerrado, ese atributo apunta a un id
+          inexistente y un lector de pantalla anuncia que el botón controla algo
+          que no puede encontrar. `hidden` resuelve las dos cosas a la vez,
+          porque `display: none` también saca los enlaces del orden de
+          tabulación: estando cerrado, el Tab no se mete adentro del cajón. */}
+      <div className={`fixed inset-0 z-40 md:hidden ${open ? 'block' : 'hidden'}`}>
+        <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+        <aside
+          id="menu-lateral"
+          className="absolute left-0 top-0 z-50 flex h-full w-64 flex-col border-r border-brand-border bg-sidebar"
+        >
+          <SidebarContent {...sidebarProps} onClose={() => setOpen(false)} />
+        </aside>
+      </div>
 
       {/* Área principal */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -129,9 +135,14 @@ export default function Layout() {
           <span className="text-base font-bold text-primary-text">StockFlow</span>
           {/* `aria-expanded` es lo que le dice a un lector de pantalla si el
               menú está abierto o cerrado. Sin él, el botón se anuncia igual en
-              los dos estados y no hay forma de saber qué pasó al pulsarlo. */}
+              los dos estados y no hay forma de saber qué pasó al pulsarlo.
+
+              El onClick alterna en vez de abrir siempre: antes hacía
+              `setOpen(true)`, así que con el menú abierto el botón se anunciaba
+              como «Cerrar menú» y no cerraba nada. Con el mouse no se notaba
+              —el cajón lo tapa—, pero quien llega por teclado sí lo alcanza. */}
           <button
-            onClick={() => setOpen(true)}
+            onClick={() => setOpen((abierto) => !abierto)}
             className="rounded-md p-1 text-tx-secondary hover:bg-brand-border"
             aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
             aria-expanded={open}
